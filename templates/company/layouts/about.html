@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="page-hero">
+      <div class="page-kicker">About the firm</div>
+      <h1 class="page-title">We help teams turn complexity into forward motion.</h1>
+      <p class="page-copy">{{ site.author.bio | default(value=site.description) }}</p>
+    </div>
+
+    <div class="story-layout">
+      <article class="story-panel">
+        {% if slots['about-body'] %}
+          <div class="prose">{{ slots['about-body'][0].html_body | safe }}</div>
+        {% else %}
+          <p class="card-copy">Add an `about-body` article to explain the company story, point of view, and operating model.</p>
+        {% endif %}
+      </article>
+
+      {% if slots['stat-number'] %}
+      <aside class="surface-panel">
+        <div class="section-kicker">Quick facts</div>
+        <div class="metrics-ribbon">
+          {% for stat in slots['stat-number'] %}
+          <div class="metric-tile">
+            <span class="metric-value">{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</span>
+            <span class="metric-label">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </aside>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if slots['timeline-entry'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Milestones</div>
+        <h2 class="section-title">How Signal Forge evolved.</h2>
+      </div>
+    </div>
+
+    <div class="timeline">
+      {% for entry in slots['timeline-entry'] %}
+      <article class="timeline-item">
+        <div class="card-kicker">{{ entry.frontmatter.start_date | default(value='') }}{% if entry.frontmatter.end_date %} - {{ entry.frontmatter.end_date }}{% endif %}</div>
+        <h3>{{ entry.frontmatter.role | default(value=entry.frontmatter.title) }}</h3>
+        <div class="timeline-meta">
+          {% if entry.frontmatter.company %}<span>{{ entry.frontmatter.company }}</span>{% endif %}
+          {% if entry.frontmatter.location %}<span>{{ entry.frontmatter.location }}</span>{% endif %}
+        </div>
+        <div class="card-copy">{{ entry.html_body | safe }}</div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if slots['feature-card'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Principles</div>
+        <h2 class="section-title">The rules we keep when delivery gets difficult.</h2>
+      </div>
+    </div>
+
+    <div class="cards-grid">
+      {% for item in slots['feature-card'] %}
+      <article class="value-card">
+        {% if item.frontmatter.icon %}<div class="card-kicker">{{ item.frontmatter.icon }}</div>{% endif %}
+        <h3>{{ item.frontmatter.title }}</h3>
+        <div class="card-copy">{{ item.html_body | safe }}</div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if slots['testimonial'] %}
+<section class="section">
+  <div class="container">
+    <div class="quotes-grid">
+      {% for item in slots['testimonial'] %}
+      <article class="quote-card">
+        <blockquote>{{ item.html_body | safe }}</blockquote>
+        <cite>
+          <strong>{{ item.frontmatter.author | default(value=item.frontmatter.title) }}</strong><br>
+          {{ item.frontmatter.role | default(value='') }}{% if item.frontmatter.company %}, {{ item.frontmatter.company }}{% endif %}
+        </cite>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

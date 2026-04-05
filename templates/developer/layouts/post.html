@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if article %}
+<article class="post-article" itemscope itemtype="https://schema.org/Article">
+
+  {# Post header #}
+  <header class="post-header">
+    {% if article.frontmatter.categories %}
+    <div class="post-categories">
+      {% for cat in article.frontmatter.categories %}
+      <a href="/blog/?category={{ cat }}" class="post-category">{{ cat }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <h1 class="post-title" itemprop="headline">{{ article.frontmatter.title }}</h1>
+
+    {% if article.frontmatter.description %}
+    <p class="post-lead" itemprop="description">{{ article.frontmatter.description }}</p>
+    {% endif %}
+
+    <div class="post-meta" aria-label="Post metadata">
+      {% if article.frontmatter.author %}
+      <span class="post-author" itemprop="author">{{ article.frontmatter.author }}</span>
+      <span class="post-meta-sep" aria-hidden="true">·</span>
+      {% endif %}
+
+      {% if article.frontmatter.date %}
+      <time class="post-date" datetime="{{ article.frontmatter.date }}" itemprop="datePublished">
+        {{ article.frontmatter.date }}
+      </time>
+      <span class="post-meta-sep" aria-hidden="true">·</span>
+      {% endif %}
+
+      <span class="post-reading-time">{{ article.reading_time }} min read</span>
+    </div>
+
+    {% if article.frontmatter.tags %}
+    <div class="post-tags" aria-label="Tags">
+      {% for tag in article.frontmatter.tags %}
+      <a href="/blog/?tag={{ tag }}" class="tag">{{ tag }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+  {# Cover image #}
+  {% if article.frontmatter.cover_image %}
+  <div class="post-cover">
+    <img src="{{ article.frontmatter.cover_image }}"
+         alt="{{ article.frontmatter.cover_alt | default(value=article.frontmatter.title) }}"
+         class="post-cover-img"
+         loading="eager"
+         itemprop="image">
+  </div>
+  {% endif %}
+
+  {# Table of contents placeholder (rendered client-side) #}
+  <dev-toc content-selector=".post-body"></dev-toc>
+
+  {# Post body #}
+  <div class="post-body prose" itemprop="articleBody">
+    {{ article.html_body | safe }}
+  </div>
+
+  {# Post footer #}
+  <footer class="post-footer">
+    {% if article.frontmatter.updated %}
+    <p class="post-updated">
+      Last updated:
+      <time datetime="{{ article.frontmatter.updated }}" itemprop="dateModified">
+        {{ article.frontmatter.updated }}
+      </time>
+    </p>
+    {% endif %}
+
+    <div class="post-share" aria-label="Share this post">
+      <span class="share-label">Share:</span>
+      <dev-share-buttons
+        url="{{ site.base_url }}{{ article.url_path }}"
+        title="{{ article.frontmatter.title }}"
+      ></dev-share-buttons>
+    </div>
+  </footer>
+
+</article>
+
+{# Newsletter slot #}
+{% if slots['newsletter-signup'] %}
+  {% set nl = slots['newsletter-signup'][0] %}
+  <aside class="post-newsletter">
+    <h2>{{ nl.frontmatter.title }}</h2>
+    <div>{{ nl.html_body | safe }}</div>
+  </aside>
+{% endif %}
+
+{# Related posts could go here via a pfusch component #}
+
+{% else %}
+<p class="empty-state">Article not found.</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Signal Forge Mark</title>
+  <rect width="64" height="64" rx="18" fill="#142033"/>
+  <path d="M16 42L32 16l16 26h-9.5l-6.5-10.6L25.5 42H16z" fill="#ff6b57"/>
+  <path d="M27 48l5-8 5 8h-10z" fill="#179a8f"/>
+</svg>

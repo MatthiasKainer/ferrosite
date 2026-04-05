@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="page-hero">
+      <div class="page-kicker">Insights</div>
+      <h1 class="page-title">Notes on product strategy, AI operations, and delivery.</h1>
+      <p class="page-copy">Use the bundled articles as structure. Replace them with your point of view, publish dates, and examples from real client work.</p>
+    </div>
+
+    {% if slots['article-card'] %}
+    <div class="cards-grid">
+      {% for post in slots['article-card'] %}
+      <a class="insight-card" href="{{ post.url_path }}">
+        {% if post.frontmatter.date %}<div class="card-kicker">{{ post.frontmatter.date }}</div>{% endif %}
+        <h3>{{ post.frontmatter.title }}</h3>
+        <p class="card-copy">{{ post.frontmatter.description | default(value=post.excerpt) }}</p>
+        {% if post.frontmatter.tags %}
+        <div class="card-tags">
+          {% for tag in post.frontmatter.tags %}
+          <span class="tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <article class="surface-panel">
+      <p class="card-copy">No posts yet. Add markdown files under `content/blog/` with `slot = "article-body"` to populate this page.</p>
+    </article>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

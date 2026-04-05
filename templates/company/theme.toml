@@ -1,0 +1,31 @@
+[colors]
+primary = "#ff6b57"
+primary_dark = "#e5513d"
+accent = "#179a8f"
+background = "#f5efe5"
+surface = "#fff9f1"
+text = "#142033"
+text_muted = "#5e6c7a"
+border = "#d8cfbf"
+code_bg = "#142033"
+success = "#148a62"
+warning = "#c98a19"
+error = "#c44c46"
+
+[typography]
+font_sans = "'Manrope', 'Segoe UI', sans-serif"
+font_mono = "'IBM Plex Mono', ui-monospace, monospace"
+font_heading = "'Space Grotesk', 'Avenir Next', sans-serif"
+size_base = "1rem"
+size_lg = "1.125rem"
+size_xl = "1.35rem"
+size_2xl = "1.8rem"
+size_3xl = "2.6rem"
+line_height = "1.65"
+
+[spacing]
+unit = "0.25rem"
+container_max = "1180px"
+sidebar_width = "280px"
+header_height = "76px"
+dock_height = "80px"

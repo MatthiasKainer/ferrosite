@@ -1,0 +1,49 @@
+[site]
+title = "Horst Mustermann"
+description = "Software engineer specializing in distributed systems, Rust, and developer tooling. Building reliable software since 2012."
+base_url = "https://horstmustermann.dev"
+language = "en"
+keywords = ["software engineer", "rust", "distributed systems", "developer tooling", "open source"]
+favicon = "/assets/favicon.svg"
+
+[site.author]
+name = "Horst Mustermann"
+email = "hello@horstmustermann.dev"
+bio = "I build systems that scale and tools that developers love. Currently focused on Rust, WebAssembly, and the future of developer infrastructure."
+avatar = ""
+
+[site.social]
+github = "https://github.com/horstmustermann"
+linkedin = "https://linkedin.com/in/horstmustermann"
+twitter = "https://x.com/horstmustermann"
+
+[build]
+template = "developer"
+content_dir = "content"
+output_dir = "dist"
+assets_dir = "assets"
+
+[build.ssr]
+enabled = false
+node_bin = "node"
+package_manager_bin = "npm"
+timeout_ms = 30000
+
+[layout]
+menu = true
+dock = false
+sidebar = false
+sidebar_position = "right"
+
+[plugins]
+plugins_dir = "plugins"
+enabled = ["contact-form"]
+
+[deploy]
+provider = "cloudflare"
+
+[deploy.cloudflare]
+project_name = "horstmustermann-dev"
+account_id = "YOUR_CF_ACCOUNT_ID"
+workers_subdomain = "horstmustermann"
+domain = "horstmustermann.dev"

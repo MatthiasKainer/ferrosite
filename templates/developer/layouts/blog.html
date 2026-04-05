@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Blog</h1>
+  <p class="page-subtitle">Thoughts on software, systems, and the craft of building things.</p>
+</div>
+
+{# Tag filter (client-side via pfusch) #}
+{% if slots['article-card'] %}
+  {% set all_tags = [] %}
+  {% for post in slots['article-card'] %}
+    {% for tag in post.frontmatter.tags %}
+      {# jinja note: we collect tags for the component attribute #}
+    {% endfor %}
+  {% endfor %}
+  <dev-blog-filter
+    posts='{{ slots["article-card"] | tojson }}'
+  ></dev-blog-filter>
+{% else %}
+  <p class="empty-state">No posts yet. Check back soon!</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Developer Template Icon</title>
+  <rect width="64" height="64" rx="16" fill="#0f172a"/>
+  <path d="M18 18h28v8H30v12h14v8H18V18z" fill="#0ea5e9"/>
+  <path d="M36 18h10l-7 10h-7l4-10z" fill="#8b5cf6"/>
+</svg>

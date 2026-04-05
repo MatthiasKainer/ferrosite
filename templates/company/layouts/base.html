@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="{{ site.language | default(value='en') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.description }}">
+
+  {% if page.meta.no_index %}
+  <meta name="robots" content="noindex,nofollow">
+  {% endif %}
+
+  <meta property="og:title" content="{{ page.meta.og_title | default(value=page.title) }}">
+  <meta property="og:description" content="{{ page.meta.og_description | default(value=page.description) }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.base_url }}{{ page.url_path }}">
+  {% if page.meta.og_image %}
+  <meta property="og:image" content="{{ page.meta.og_image }}">
+  {% endif %}
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page.title }}">
+  <meta name="twitter:description" content="{{ page.description }}">
+
+  {% if site.keywords %}
+  <meta name="keywords" content="{{ site.keywords | join(sep=', ') }}">
+  {% endif %}
+
+  {% if site.favicon %}
+  <link rel="icon" href="{{ site.favicon }}">
+  {% endif %}
+
+  <link rel="canonical" href="{{ page.meta.canonical | default(value=site.base_url ~ page.url_path) }}">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/assets/main.css">
+  {{ extra_head | safe }}
+</head>
+<body class="page-{{ page.type }}">
+  <div class="site-aura site-aura-one" aria-hidden="true"></div>
+  <div class="site-aura site-aura-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container header-row">
+      <a class="site-brand" href="/" aria-label="{{ site.title }} home">
+        {% if slots['header-brand'] %}
+          {% set brand = slots['header-brand'][0] %}
+          <span class="brand-mark">{{ brand.frontmatter.icon | default(value='SF') }}</span>
+          <span class="brand-text">{{ brand.frontmatter.title }}</span>
+        {% else %}
+          <span class="brand-mark">SF</span>
+          <span class="brand-text">{{ site.title }}</span>
+        {% endif %}
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">Menu</button>
+
+      <nav class="site-nav" aria-label="Main navigation">
+        <ul id="nav-menu" class="nav-list">
+          {% if slots['nav-item'] %}
+            {% for item in slots['nav-item'] %}
+              {% set item_url = item.frontmatter.url | default(value=item.url_path) %}
+              <li>
+                <a href="{{ item_url }}"
+                   class="nav-link {% if page.url_path == item_url %}active{% endif %}"
+                   {% if item.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                  {% if item.frontmatter.icon %}<span class="nav-icon">{{ item.frontmatter.icon }}</span>{% endif %}
+                  <span>{{ item.frontmatter.title }}</span>
+                </a>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li><a href="/" class="nav-link {% if page.url_path == '/' %}active{% endif %}">Home</a></li>
+            <li><a href="/about/" class="nav-link {% if page.url_path == '/about/' %}active{% endif %}">About</a></li>
+            <li><a href="/projects/" class="nav-link {% if page.url_path == '/projects/' %}active{% endif %}">Projects</a></li>
+            <li><a href="/blog/" class="nav-link {% if page.url_path == '/blog/' %}active{% endif %}">Insights</a></li>
+            <li><a href="/contact/" class="nav-link {% if page.url_path == '/contact/' %}active{% endif %}">Contact</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+
+      {% if slots['header-action'] %}
+        {% set action = slots['header-action'][0] %}
+        <div class="header-action">
+          <a href="{{ action.frontmatter.url | default(value='/contact/') }}"
+             class="button-link primary"
+             {% if action.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+            {{ action.frontmatter.title }}
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="site-main">
+    <div class="container">
+      <aside class="template-notice" aria-label="Template notice">
+        <strong>Template notice:</strong> This bundled starter includes placeholder copy, example case studies, and example contact details. Replace them before publishing.
+      </aside>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          {% if slots['footer-about'] %}
+            {% set about = slots['footer-about'][0] %}
+            <h2 class="footer-title">{{ about.frontmatter.title }}</h2>
+            <div class="footer-copy">{{ about.html_body | safe }}</div>
+          {% else %}
+            <h2 class="footer-title">{{ site.title }}</h2>
+            <p class="footer-copy">{{ site.description }}</p>
+          {% endif %}
+        </div>
+
+        {% if slots['footer-nav-column'] %}
+          {% for column in slots['footer-nav-column'] %}
+          <div class="footer-column">
+            <h3>{{ column.frontmatter.title }}</h3>
+            {{ column.html_body | safe }}
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="footer-base">
+        {% if slots['footer-bottom'] %}
+          {{ slots['footer-bottom'][0].html_body | safe }}
+        {% else %}
+          <p>&copy; {{ "now" | date(format="%Y") }} {{ site.title }}.</p>
+        {% endif %}
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const toggle = document.querySelector(".nav-toggle");
+    const navMenu = document.getElementById("nav-menu");
+
+    toggle?.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!expanded));
+      navMenu?.classList.toggle("open");
+    });
+  </script>
+</body>
+</html>

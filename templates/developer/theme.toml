@@ -1,0 +1,31 @@
+[colors]
+primary       = "#0ea5e9"   # sky-500
+primary_dark  = "#0284c7"   # sky-600
+accent        = "#8b5cf6"   # violet-500
+background    = "#0f172a"   # slate-900 (dark)
+surface       = "#1e293b"   # slate-800
+text          = "#f1f5f9"   # slate-100
+text_muted    = "#94a3b8"   # slate-400
+border        = "#334155"   # slate-700
+code_bg       = "#0f172a"   # slate-900
+success       = "#22c55e"   # green-500
+warning       = "#f59e0b"   # amber-500
+error         = "#ef4444"   # red-500
+
+[typography]
+font_sans    = "'Inter', system-ui, -apple-system, sans-serif"
+font_mono    = "'JetBrains Mono', 'Fira Code', ui-monospace, monospace"
+font_heading = "'Inter', system-ui, sans-serif"
+size_base    = "1rem"
+size_lg      = "1.125rem"
+size_xl      = "1.25rem"
+size_2xl     = "1.5rem"
+size_3xl     = "1.875rem"
+line_height  = "1.7"
+
+[spacing]
+unit           = "0.25rem"
+container_max  = "1140px"
+sidebar_width  = "280px"
+header_height  = "64px"
+dock_height    = "80px"

@@ -1,0 +1,50 @@
+[site]
+title = "Signal Forge"
+description = "Signal Forge helps B2B and industrial teams turn product strategy, AI, and data systems into measurable growth."
+base_url = "https://signalforge.studio"
+language = "en"
+keywords = ["company website", "product strategy", "data platforms", "AI operations", "B2B growth"]
+favicon = "/assets/favicon.svg"
+
+[site.author]
+name = "Signal Forge"
+email = "hello@signalforge.studio"
+bio = "Strategy, product, and platform specialists for teams shipping their next growth chapter."
+avatar = ""
+
+[site.social]
+github = "https://github.com/signalforge"
+linkedin = "https://linkedin.com/company/signalforge"
+twitter = "https://x.com/signalforge"
+website = "https://signalforge.studio"
+
+[build]
+template = "company"
+content_dir = "content"
+output_dir = "dist"
+assets_dir = "assets"
+
+[build.ssr]
+enabled = false
+node_bin = "node"
+package_manager_bin = "npm"
+timeout_ms = 30000
+
+[layout]
+menu = true
+dock = false
+sidebar = false
+sidebar_position = "right"
+
+[plugins]
+plugins_dir = "plugins"
+enabled = ["contact-form"]
+
+[deploy]
+provider = "cloudflare"
+
+[deploy.cloudflare]
+project_name = "signalforge"
+account_id = "YOUR_CF_ACCOUNT_ID"
+workers_subdomain = "signalforge"
+domain = "signalforge.studio"

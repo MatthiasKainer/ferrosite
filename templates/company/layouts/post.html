@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if article %}
+<section class="section">
+  <div class="container">
+    <article class="article-shell">
+      <div class="page-kicker">
+        {% if page.type == "project" %}
+          Case study
+        {% else %}
+          Insight
+        {% endif %}
+      </div>
+      <h1 class="article-title">{{ article.frontmatter.title }}</h1>
+      <p class="article-lead">{{ article.frontmatter.description | default(value=article.excerpt) }}</p>
+
+      <div class="post-meta-row">
+        {% if article.frontmatter.date %}
+        <div class="meta-chip">
+          <strong>Published</strong>
+          <span>{{ article.frontmatter.date }}</span>
+        </div>
+        {% endif %}
+
+        {% if article.frontmatter.status %}
+        <div class="meta-chip">
+          <strong>Status</strong>
+          <span>{{ article.frontmatter.status }}</span>
+        </div>
+        {% endif %}
+
+        <div class="meta-chip">
+          <strong>Read time</strong>
+          <span>{{ article.reading_time }} min</span>
+        </div>
+      </div>
+
+      {% if article.frontmatter.tech_stack %}
+      <div class="post-tags">
+        <div class="card-tags">
+          {% for tech in article.frontmatter.tech_stack %}
+          <span class="tag">{{ tech }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="prose">{{ article.html_body | safe }}</div>
+    </article>
+  </div>
+</section>
+{% else %}
+<section class="section">
+  <div class="container">
+    <article class="surface-panel">
+      <p class="card-copy">The requested article could not be loaded.</p>
+    </article>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

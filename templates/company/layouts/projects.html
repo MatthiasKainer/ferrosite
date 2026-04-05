@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="page-hero">
+      <div class="page-kicker">Case studies</div>
+      <h1 class="page-title">Transformation work that shipped, landed, and kept paying off.</h1>
+      <p class="page-copy">Project detail pages come from `project-body` content. The listing page is assembled automatically from those source files.</p>
+    </div>
+
+    {% if slots['project-card'] %}
+    <div class="cards-grid">
+      {% for project in slots['project-card'] %}
+      <a class="case-card" href="{{ project.url_path }}">
+        <div class="card-kicker">{{ project.frontmatter.status | default(value='Case study') }}</div>
+        <h3>{{ project.frontmatter.title }}</h3>
+        <p class="card-copy">{{ project.frontmatter.description | default(value=project.excerpt) }}</p>
+        {% if project.frontmatter.tech_stack %}
+        <div class="card-tags">
+          {% for tech in project.frontmatter.tech_stack %}
+          <span class="tag">{{ tech }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <article class="surface-panel">
+      <p class="card-copy">No projects yet. Add markdown files under `content/projects/` with `slot = "project-body"` to populate this page.</p>
+    </article>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

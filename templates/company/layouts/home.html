@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if slots['hero'] %}
+  {% set hero = slots['hero'][0] %}
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <div class="eyebrow">{{ hero.frontmatter.eyebrow | default(value='Growth systems for modern operators') }}</div>
+        <h1 class="hero-title">{{ hero.frontmatter.headline | default(value=hero.frontmatter.title) }}</h1>
+        {% if hero.frontmatter.sub_headline %}
+        <p class="hero-subhead">{{ hero.frontmatter.sub_headline }}</p>
+        {% endif %}
+        <div class="prose-lite">{{ hero.html_body | safe }}</div>
+        <div class="button-row">
+          {% if hero.frontmatter.cta_label and hero.frontmatter.cta_url %}
+          <a href="{{ hero.frontmatter.cta_url }}" class="button-link primary">{{ hero.frontmatter.cta_label }}</a>
+          {% endif %}
+          {% if hero.frontmatter.secondary_cta_label and hero.frontmatter.secondary_cta_url %}
+          <a href="{{ hero.frontmatter.secondary_cta_url }}" class="button-link secondary">{{ hero.frontmatter.secondary_cta_label }}</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <aside class="hero-panel">
+        <div class="panel-label">What clients buy from us</div>
+        {% if slots['stat-number'] %}
+        <div class="hero-metrics">
+          {% for stat in slots['stat-number'] %}
+          <div class="metric-tile">
+            <span class="metric-value">{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</span>
+            <span class="metric-label">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if slots['feature-card'] %}
+        <ul class="hero-list">
+          {% for item in slots['feature-card'] %}
+          <li><strong>{{ item.frontmatter.title }}</strong> {{ item.excerpt }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </aside>
+    </div>
+  </section>
+{% endif %}
+
+{% if slots['stat-number'] %}
+<section class="section-tight">
+  <div class="container metrics-ribbon">
+    {% for stat in slots['stat-number'] %}
+    <div class="surface-panel">
+      <div class="card-kicker">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</div>
+      <h3>{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</h3>
+      {% if stat.frontmatter.note %}<p class="card-copy">{{ stat.frontmatter.note }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if slots['feature-card'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Capabilities</div>
+        <h2 class="section-title">Build the revenue engine, not just the website.</h2>
+      </div>
+      <p class="section-copy">Signal Forge pairs strategy, systems thinking, and polished delivery so operators can move from ideas to measurable outcomes faster.</p>
+    </div>
+
+    <div class="cards-grid">
+      {% for item in slots['feature-card'] %}
+      <article class="value-card">
+        {% if item.frontmatter.icon %}<div class="card-kicker">{{ item.frontmatter.icon }}</div>{% endif %}
+        <h3>{{ item.frontmatter.title }}</h3>
+        <div class="card-copy">{{ item.html_body | safe }}</div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if slots['project-card'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Selected work</div>
+        <h2 class="section-title">Case studies with operational impact.</h2>
+      </div>
+      <a class="button-link secondary" href="/projects/">See all case studies</a>
+    </div>
+
+    <div class="cards-grid">
+      {% for project in slots['project-card'] %}
+      <a class="case-card" href="{{ project.url_path }}">
+        <div class="card-kicker">{{ project.frontmatter.status | default(value='Case study') }}</div>
+        <h3>{{ project.frontmatter.title }}</h3>
+        <p class="card-copy">{{ project.frontmatter.description | default(value=project.excerpt) }}</p>
+        {% if project.frontmatter.tech_stack %}
+        <div class="card-tags">
+          {% for tech in project.frontmatter.tech_stack %}
+          <span class="tag">{{ tech }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if slots['testimonial'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Client signal</div>
+        <h2 class="section-title">Teams call when the next stage needs to work for real.</h2>
+      </div>
+    </div>
+
+    <div class="quotes-grid">
+      {% for item in slots['testimonial'] %}
+      <article class="quote-card">
+        <blockquote>{{ item.html_body | safe }}</blockquote>
+        <cite>
+          <strong>{{ item.frontmatter.author | default(value=item.frontmatter.title) }}</strong><br>
+          {{ item.frontmatter.role | default(value='') }}{% if item.frontmatter.company %}, {{ item.frontmatter.company }}{% endif %}
+        </cite>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if slots['article-card'] %}
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Insights</div>
+        <h2 class="section-title">Practical notes from strategy rooms and delivery trenches.</h2>
+      </div>
+      <a class="button-link secondary" href="/blog/">Read insights</a>
+    </div>
+
+    <div class="cards-grid">
+      {% for post in slots['article-card'] %}
+      <a class="insight-card" href="{{ post.url_path }}">
+        {% if post.frontmatter.date %}<div class="card-kicker">{{ post.frontmatter.date }}</div>{% endif %}
+        <h3>{{ post.frontmatter.title }}</h3>
+        <p class="card-copy">{{ post.frontmatter.description | default(value=post.excerpt) }}</p>
+        {% if post.frontmatter.tags %}
+        <div class="card-tags">
+          {% for tag in post.frontmatter.tags %}
+          <span class="tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

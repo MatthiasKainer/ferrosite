@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="about-page">
+
+  {# Hero / intro #}
+  {% if slots['hero'] %}
+    {% set hero = slots['hero'][0] %}
+    <section class="about-hero">
+      <div class="about-hero-text">
+        <h1>{{ hero.frontmatter.headline | default(value=hero.frontmatter.title) }}</h1>
+        {% if hero.frontmatter.sub_headline %}
+        <p class="about-tagline">{{ hero.frontmatter.sub_headline }}</p>
+        {% endif %}
+        <div>{{ hero.html_body | safe }}</div>
+      </div>
+      {% if site.author.avatar %}
+      <div class="about-avatar">
+        <img src="{{ site.author.avatar }}" alt="{{ site.author.name }}" class="avatar-lg">
+      </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <header class="page-header">
+      <h1 class="page-title">About {{ site.author.name }}</h1>
+    </header>
+  {% endif %}
+
+  {# Stats #}
+  {% if slots['stat-number'] %}
+  <section class="stats-bar" aria-label="Key stats">
+    <div class="stats-grid">
+      {% for stat in slots['stat-number'] %}
+      <div class="stat-item">
+        <span class="stat-value">{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</span>
+        <span class="stat-label">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Main about body #}
+  {% if slots['about-body'] %}
+    {% set body = slots['about-body'][0] %}
+    <section class="about-body prose" aria-label="Bio">
+      {{ body.html_body | safe }}
+    </section>
+  {% endif %}
+
+  {# Skills matrix #}
+  {% if slots['skill-group'] %}
+  <section class="skills-section" aria-label="Skills">
+    <h2 class="section-title">Skills & Expertise</h2>
+    <div class="skill-groups">
+      {% for group in slots['skill-group'] %}
+      <div class="skill-group">
+        <h3 class="skill-group-title">{{ group.frontmatter.category | default(value=group.frontmatter.title) }}</h3>
+        {% if group.frontmatter.level %}
+        <span class="skill-level skill-level-{{ group.frontmatter.level }}">{{ group.frontmatter.level }}</span>
+        {% endif %}
+        <div class="skill-tags">{{ group.html_body | safe }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Career timeline #}
+  {% if slots['timeline-entry'] %}
+  <section class="timeline-section" aria-label="Career history">
+    <h2 class="section-title">Career</h2>
+    <div class="timeline">
+      {% for entry in slots['timeline-entry'] %}
+      <dev-timeline-entry
+        role="{{ entry.frontmatter.role | default(value=entry.frontmatter.title) }}"
+        company="{{ entry.frontmatter.company | default(value='') }}"
+        location="{{ entry.frontmatter.location | default(value='') }}"
+        start="{{ entry.frontmatter.start_date | default(value='') }}"
+        end="{{ entry.frontmatter.end_date | default(value='Present') }}"
+        body="{{ entry.html_body | escape }}"
+      ></dev-timeline-entry>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Testimonials #}
+  {% if slots['testimonial'] %}
+  <section class="testimonials-section" aria-label="Recommendations">
+    <h2 class="section-title">Recommendations</h2>
+    <div class="testimonials-grid">
+      {% for item in slots['testimonial'] %}
+      <blockquote class="testimonial-card">
+        <div class="testimonial-body">{{ item.html_body | safe }}</div>
+        <footer class="testimonial-footer">
+          <cite>
+            <strong>{{ item.frontmatter.author | default(value=item.frontmatter.title) }}</strong>
+            {% if item.frontmatter.role %}, <span>{{ item.frontmatter.role }}</span>{% endif %}
+            {% if item.frontmatter.company %} @ {{ item.frontmatter.company }}{% endif %}
+          </cite>
+        </footer>
+      </blockquote>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Speaking #}
+  {% if slots['speaking-section'] %}
+    {% set speaking = slots['speaking-section'][0] %}
+    <section class="speaking-section" aria-label="Speaking">
+      <h2 class="section-title">{{ speaking.frontmatter.title }}</h2>
+      <div class="prose">{{ speaking.html_body | safe }}</div>
+    </section>
+  {% endif %}
+
+</div>
+{% endblock %}

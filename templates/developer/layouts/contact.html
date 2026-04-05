@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="contact-page">
+  <header class="page-header">
+    <h1 class="page-title">Get in Touch</h1>
+    <p class="page-subtitle">Have a project in mind? Let's talk.</p>
+  </header>
+
+  <div class="contact-grid">
+    <div class="contact-info">
+      {% if site.author.bio %}
+      <p class="contact-bio">{{ site.author.bio }}</p>
+      {% endif %}
+
+      <ul class="contact-channels" aria-label="Contact channels">
+        {% if site.author.email %}
+        <li>
+          <a href="mailto:{{ site.author.email }}" class="contact-channel">
+            <span class="channel-icon">✉</span>
+            <span>{{ site.author.email }}</span>
+          </a>
+        </li>
+        {% endif %}
+        {% if site.social.github %}
+        <li>
+          <a href="{{ site.social.github }}" class="contact-channel" target="_blank" rel="noopener noreferrer">
+            <span class="channel-icon"><dev-social-icon platform="github"></dev-social-icon></span>
+            <span>GitHub</span>
+          </a>
+        </li>
+        {% endif %}
+        {% if site.social.linkedin %}
+        <li>
+          <a href="{{ site.social.linkedin }}" class="contact-channel" target="_blank" rel="noopener noreferrer">
+            <span class="channel-icon"><dev-social-icon platform="linkedin"></dev-social-icon></span>
+            <span>LinkedIn</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+
+    <div class="contact-form-wrapper">
+      {# contact-form slot is always plugin-driven #}
+      {% if slots['contact-form'] %}
+        {% set form_slot = slots['contact-form'][0] %}
+        <ferrosite-contact-form
+          endpoint="{{ form_slot.frontmatter.url | default(value='/api/contact') }}"
+          fields='{{ form_slot.html_body | escape }}'
+        ></ferrosite-contact-form>
+      {% else %}
+        {# Graceful fallback: plain HTML form #}
+        <form class="contact-form" action="/api/contact" method="POST">
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="6" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

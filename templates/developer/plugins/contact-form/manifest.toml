@@ -1,0 +1,30 @@
+[plugin]
+name = "contact-form"
+version = "1.0.0"
+description = "CQRS contact form with email delivery via Resend. Dynamic lambda, static HTML fallback."
+author = "ferrosite"
+
+slots = ["contact-form"]
+component_file = "component.js"
+worker_file = "worker.js"
+worker_route = "/api/contact"
+worker_runtime = "cloudflare-worker"
+required_env = ["RESEND_API_KEY", "TO_EMAIL"]
+
+[[commands]]
+name = "SendMessage"
+description = "Send a contact form message via email"
+payload_schema = { type = "object", required = ["name", "email", "message"], properties = { name = { type = "string", minLength = 1, maxLength = 100 }, email = { type = "string", format = "email" }, subject = { type = "string", maxLength = 200 }, message = { type = "string", minLength = 10, maxLength = 5000 } } }
+
+[[queries]]
+name = "GetStatus"
+description = "Health check"
+params_schema = {}
+response_schema = { type = "object", properties = { ok = { type = "boolean" } } }
+
+[sandbox]
+memory_mb = 128
+timeout_ms = 5000
+allowed_domains = ["api.resend.com"]
+cors = true
+rate_limit_rpm = 10

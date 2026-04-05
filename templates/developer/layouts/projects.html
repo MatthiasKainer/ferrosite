@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="projects-page">
+  <header class="page-header">
+    <h1 class="page-title">Projects</h1>
+    <p class="page-subtitle">Things I've built — open source, client work, and experiments.</p>
+  </header>
+
+  {% if slots['project-card'] %}
+  <dev-project-grid
+    projects='{{ slots["project-card"] | tojson }}'
+  ></dev-project-grid>
+  {% else %}
+  <p class="empty-state">No projects yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{# ── HERO ────────────────────────────────────────────────────────────────── #}
+{% if slots['hero'] %}
+  {% set hero = slots['hero'][0] %}
+  <section class="hero-section" aria-label="Introduction"
+    {% if hero.frontmatter.background %}
+      style="--hero-bg: {{ hero.frontmatter.background }}"
+    {% endif %}>
+    <div class="hero-content">
+      <div class="hero-text">
+        {% if hero.frontmatter.headline %}
+          <h1 class="hero-headline">{{ hero.frontmatter.headline }}</h1>
+        {% else %}
+          <h1 class="hero-headline">{{ hero.frontmatter.title }}</h1>
+        {% endif %}
+        {% if hero.frontmatter.sub_headline %}
+          <p class="hero-sub">{{ hero.frontmatter.sub_headline }}</p>
+        {% endif %}
+        {% if hero.html_body %}
+          <div class="hero-body">{{ hero.html_body | safe }}</div>
+        {% endif %}
+        <div class="hero-actions">
+          {% if hero.frontmatter.cta_label and hero.frontmatter.cta_url %}
+          <a href="{{ hero.frontmatter.cta_url }}" class="btn btn-primary btn-lg">
+            {{ hero.frontmatter.cta_label }}
+          </a>
+          {% endif %}
+          {% if site.social.github %}
+          <a href="{{ site.social.github }}" class="btn btn-outline btn-lg" target="_blank" rel="noopener noreferrer">
+            <dev-social-icon platform="github"></dev-social-icon> GitHub
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% if site.author.avatar %}
+      <div class="hero-avatar">
+        <div class="avatar-ring">
+          <img src="{{ site.author.avatar }}" alt="{{ site.author.name }}" class="avatar-img" loading="eager">
+        </div>
+        <div class="avatar-glow"></div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="hero-scroll-hint" aria-hidden="true">
+      <span class="scroll-chevron">↓</span>
+    </div>
+  </section>
+{% endif %}
+
+{# ── STATS BAR ────────────────────────────────────────────────────────────── #}
+{% if slots['stat-number'] %}
+<section class="stats-bar" aria-label="Key statistics">
+  <div class="stats-grid">
+    {% for stat in slots['stat-number'] %}
+    <div class="stat-item">
+      <span class="stat-value">{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</span>
+      <span class="stat-label">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── FEATURE CARDS ────────────────────────────────────────────────────────── #}
+{% if slots['feature-card'] %}
+<section class="features-section" aria-label="Highlights">
+  <div class="section-header">
+    <h2 class="section-title">What I Do</h2>
+  </div>
+  <div class="features-grid">
+    {% for card in slots['feature-card'] %}
+    <article class="feature-card">
+      {% if card.frontmatter.icon %}
+      <div class="feature-icon" aria-hidden="true">{{ card.frontmatter.icon }}</div>
+      {% endif %}
+      <h3 class="feature-title">{{ card.frontmatter.title }}</h3>
+      <div class="feature-body">{{ card.html_body | safe }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── SKILLS ────────────────────────────────────────────────────────────────── #}
+{% if slots['skill-group'] %}
+<section class="skills-section" aria-label="Technical skills">
+  <div class="section-header">
+    <h2 class="section-title">Skills & Technologies</h2>
+  </div>
+  <div class="skill-groups">
+    {% for group in slots['skill-group'] %}
+    <div class="skill-group">
+      <h3 class="skill-group-title">{{ group.frontmatter.category | default(value=group.frontmatter.title) }}</h3>
+      <div class="skill-tags">
+        {{ group.html_body | safe }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── FEATURED PROJECTS ─────────────────────────────────────────────────────── #}
+{% if slots['project-card'] %}
+<section class="projects-section" aria-label="Featured projects">
+  <div class="section-header">
+    <h2 class="section-title">Featured Projects</h2>
+    <a href="/projects/" class="section-link">All projects →</a>
+  </div>
+  <div class="projects-grid">
+    {% for project in slots['project-card'] | slice(end=3) %}
+    <dev-project-card
+      title="{{ project.frontmatter.title }}"
+      excerpt="{{ project.excerpt }}"
+      url="{{ project.url_path }}"
+      {% if project.frontmatter.repo_url %}repo="{{ project.frontmatter.repo_url }}"{% endif %}
+      {% if project.frontmatter.live_url %}live="{{ project.frontmatter.live_url }}"{% endif %}
+      {% if project.frontmatter.status %}status="{{ project.frontmatter.status }}"{% endif %}
+      stack='{{ project.frontmatter.tech_stack | tojson }}'
+    ></dev-project-card>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── RECENT BLOG POSTS ─────────────────────────────────────────────────────── #}
+{% if slots['article-card'] %}
+<section class="blog-section" aria-label="Recent articles">
+  <div class="section-header">
+    <h2 class="section-title">Recent Writing</h2>
+    <a href="/blog/" class="section-link">All posts →</a>
+  </div>
+  <div class="blog-grid">
+    {% for post in slots['article-card'] | slice(end=3) %}
+    <dev-blog-card
+      title="{{ post.frontmatter.title }}"
+      excerpt="{{ post.excerpt }}"
+      url="{{ post.url_path }}"
+      date="{{ post.frontmatter.date | default(value='') }}"
+      reading-time="{{ post.reading_time }}"
+      tags='{{ post.frontmatter.tags | tojson }}'
+      {% if post.frontmatter.cover_image %}cover="{{ post.frontmatter.cover_image }}"{% endif %}
+    ></dev-blog-card>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── TESTIMONIALS ──────────────────────────────────────────────────────────── #}
+{% if slots['testimonial'] %}
+<section class="testimonials-section" aria-label="Testimonials">
+  <div class="section-header">
+    <h2 class="section-title">What People Say</h2>
+  </div>
+  <div class="testimonials-grid">
+    {% for item in slots['testimonial'] %}
+    <blockquote class="testimonial-card">
+      <div class="testimonial-body">{{ item.html_body | safe }}</div>
+      <footer class="testimonial-footer">
+        <cite>
+          <strong>{{ item.frontmatter.author | default(value=item.frontmatter.title) }}</strong>
+          {% if item.frontmatter.role %}<span class="testimonial-role">{{ item.frontmatter.role }}</span>{% endif %}
+          {% if item.frontmatter.company %}<span class="testimonial-company">@ {{ item.frontmatter.company }}</span>{% endif %}
+        </cite>
+      </footer>
+    </blockquote>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── OPEN SOURCE ───────────────────────────────────────────────────────────── #}
+{% if slots['open-source-section'] %}
+  {% set oss = slots['open-source-section'][0] %}
+  <section class="oss-section" aria-label="Open source">
+    <div class="section-header">
+      <h2 class="section-title">{{ oss.frontmatter.title }}</h2>
+    </div>
+    <div class="oss-body">{{ oss.html_body | safe }}</div>
+  </section>
+{% endif %}
+
+{# ── NEWSLETTER ───────────────────────────────────────────────────────────── #}
+{% if slots['newsletter-signup'] %}
+  {% set nl = slots['newsletter-signup'][0] %}
+  <section class="newsletter-section" aria-label="Newsletter">
+    <div class="newsletter-inner">
+      <h2 class="newsletter-title">{{ nl.frontmatter.title }}</h2>
+      <p class="newsletter-body">{{ nl.excerpt }}</p>
+      <div class="newsletter-form">
+        {{ nl.html_body | safe }}
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+{% endblock %}

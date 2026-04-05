@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container contact-grid">
+    <article class="contact-panel">
+      <div class="page-kicker">Contact</div>
+      <h1 class="page-title">Bring the next launch, redesign, or operational mess.</h1>
+      <p class="page-copy">The bundled contact flow includes a contact-form plugin and a static fallback form. Wire the worker secrets before relying on the dynamic version in production.</p>
+
+      <ul class="contact-list">
+        {% if site.author.email %}
+        <li class="contact-item">
+          <span class="contact-label">Email</span>
+          <a class="contact-value" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a>
+        </li>
+        {% endif %}
+        {% if site.social.linkedin %}
+        <li class="contact-item">
+          <span class="contact-label">LinkedIn</span>
+          <a class="contact-value" href="{{ site.social.linkedin }}" target="_blank" rel="noopener noreferrer">Company profile</a>
+        </li>
+        {% endif %}
+        {% if site.social.github %}
+        <li class="contact-item">
+          <span class="contact-label">GitHub</span>
+          <a class="contact-value" href="{{ site.social.github }}" target="_blank" rel="noopener noreferrer">Open repositories</a>
+        </li>
+        {% endif %}
+      </ul>
+    </article>
+
+    <aside class="form-panel">
+      <div class="section-kicker">Start a conversation</div>
+      {% if slots['contact-form'] %}
+        {% set form_slot = slots['contact-form'][0] %}
+        <ferrosite-contact-form endpoint="{{ form_slot.frontmatter.url | default(value='/api/contact') }}"></ferrosite-contact-form>
+      {% else %}
+        <form class="contact-form" action="/api/contact" method="POST">
+          <div class="field">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject">
+          </div>
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="8" required></textarea>
+          </div>
+          <button class="button-link primary" type="submit">Send message</button>
+        </form>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="{{ site.language | default(value='en') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.description }}">
+
+  {% if page.meta.no_index %}
+  <meta name="robots" content="noindex,nofollow">
+  {% endif %}
+
+  {# Open Graph #}
+  <meta property="og:title" content="{{ page.meta.og_title | default(value=page.title) }}">
+  <meta property="og:description" content="{{ page.meta.og_description | default(value=page.description) }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.base_url }}{{ page.url_path }}">
+  {% if page.meta.og_image %}
+  <meta property="og:image" content="{{ page.meta.og_image }}">
+  {% endif %}
+
+  {# Twitter Card #}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page.title }}">
+  <meta name="twitter:description" content="{{ page.description }}">
+
+  {% if site.keywords %}
+  <meta name="keywords" content="{{ site.keywords | join(sep=', ') }}">
+  {% endif %}
+
+  {% if site.favicon %}
+  <link rel="icon" href="{{ site.favicon }}">
+  {% endif %}
+
+  {# Canonical #}
+  <link rel="canonical" href="{{ page.meta.canonical | default(value=site.base_url ~ page.url_path) }}">
+
+  {# Google Fonts — Inter + JetBrains Mono #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/assets/main.css">
+
+  {# Theme vars, pfusch style + all component scripts injected here #}
+  {{ extra_head | safe }}
+</head>
+<body class="page-{{ page.type }}">
+
+  {# ── HEADER ──────────────────────────────────────────────────────────── #}
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+
+      {# Brand / logo slot #}
+      <a href="/" class="header-brand" aria-label="{{ site.title }} home">
+        {% if slots['header-brand'] and slots['header-brand'][0] %}
+          {% set brand = slots['header-brand'][0] %}
+          {% if brand.frontmatter.icon %}
+            <span class="brand-icon">{{ brand.frontmatter.icon }}</span>
+          {% endif %}
+          <span class="brand-text">{{ brand.frontmatter.title }}</span>
+        {% else %}
+          <span class="brand-text">{{ site.title }}</span>
+        {% endif %}
+      </a>
+
+      {# Navigation menu slot #}
+      {% if site.layout.menu %}
+      <nav class="site-nav" aria-label="Main navigation">
+        <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu">
+          <span class="sr-only">Toggle menu</span>
+          <span class="hamburger"></span>
+        </button>
+        <ul id="nav-menu" class="nav-menu" role="list">
+          {% if slots['nav-item'] %}
+            {% for item in slots['nav-item'] %}
+            <li>
+              <a href="{{ item.frontmatter.url | default(value=item.url_path) }}"
+                 class="nav-link {% if page.url_path == item.frontmatter.url %}active{% endif %}"
+                 {% if item.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                {% if item.frontmatter.icon %}<span class="nav-icon">{{ item.frontmatter.icon }}</span>{% endif %}
+                {{ item.frontmatter.title }}
+              </a>
+            </li>
+            {% endfor %}
+          {% else %}
+            {# Fallback nav #}
+            <li><a href="/" class="nav-link {% if page.url_path == '/' %}active{% endif %}">Home</a></li>
+            <li><a href="/about/" class="nav-link {% if page.url_path == '/about/' %}active{% endif %}">About</a></li>
+            <li><a href="/blog/" class="nav-link {% if page.url_path == '/blog/' %}active{% endif %}">Blog</a></li>
+            <li><a href="/projects/" class="nav-link {% if page.url_path == '/projects/' %}active{% endif %}">Projects</a></li>
+            <li><a href="/contact/" class="nav-link {% if page.url_path == '/contact/' %}active{% endif %}">Contact</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {# Header action slot (CTA button, theme toggle, etc.) #}
+      {% if slots['header-action'] %}
+        {% set action = slots['header-action'][0] %}
+        <div class="header-action">
+          <a href="{{ action.frontmatter.url }}" class="btn btn-primary btn-sm"
+             {% if action.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+            {{ action.frontmatter.title }}
+          </a>
+        </div>
+      {% endif %}
+
+    </div>
+  </header>
+
+  {# ── DOCK (macOS-style) ──────────────────────────────────────────────── #}
+  {% if site.layout.dock and slots['dock-item'] %}
+  <aside class="site-dock" role="complementary" aria-label="Quick links">
+    <dev-dock items='{{ slots["dock-item"] | tojson }}'></dev-dock>
+  </aside>
+  {% endif %}
+
+  {# ── MAIN CONTENT WRAPPER ─────────────────────────────────────────────── #}
+  <main id="main-content" class="site-main" role="main">
+    <div class="container">
+      <aside class="template-notice" aria-label="Template notice">
+        <strong>Template Notice:</strong>
+        <span>This site contains placeholder content, links, and contact details. Replace them before publishing.</span>
+      </aside>
+    </div>
+    <div class="container main-grid {% if site.layout.sidebar %}has-sidebar sidebar-{{ site.layout.sidebar_position }}{% endif %}">
+
+      {# ── SIDEBAR ────────────────────────────────────────────────────── #}
+      {% if site.layout.sidebar and slots['sidebar-widget'] %}
+        {% if site.layout.sidebar_position == 'left' %}
+        <aside class="site-sidebar sidebar-left" role="complementary" aria-label="Sidebar">
+          {% for widget in slots['sidebar-widget'] %}
+          <div class="sidebar-widget">{{ widget.html_body | safe }}</div>
+          {% endfor %}
+        </aside>
+        {% endif %}
+      {% endif %}
+
+      {# ── PAGE CONTENT ───────────────────────────────────────────────── #}
+      <div class="page-content">
+        {% block content %}{% endblock %}
+      </div>
+
+      {# ── SIDEBAR (right) ─────────────────────────────────────────────── #}
+      {% if site.layout.sidebar and slots['sidebar-widget'] and site.layout.sidebar_position == 'right' %}
+      <aside class="site-sidebar sidebar-right" role="complementary" aria-label="Sidebar">
+        {% for widget in slots['sidebar-widget'] %}
+        <div class="sidebar-widget">{{ widget.html_body | safe }}</div>
+        {% endfor %}
+      </aside>
+      {% endif %}
+
+    </div>
+  </main>
+
+  {# ── FOOTER ───────────────────────────────────────────────────────────── #}
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+
+      <div class="footer-top">
+        {# Footer about slot #}
+        {% if slots['footer-about'] %}
+          {% set about = slots['footer-about'][0] %}
+          <div class="footer-about">
+            <p class="footer-brand">{{ about.frontmatter.title }}</p>
+            <p class="footer-bio">{{ about.excerpt }}</p>
+            {# Social links #}
+            {% if slots['social-link'] %}
+            <div class="social-links" aria-label="Social profiles">
+              {% for social in slots['social-link'] %}
+              <a href="{{ social.frontmatter.url }}"
+                 class="social-link social-{{ social.frontmatter.platform }}"
+                 target="_blank" rel="noopener noreferrer"
+                 aria-label="{{ social.frontmatter.platform }}">
+                <dev-social-icon platform="{{ social.frontmatter.platform }}"></dev-social-icon>
+              </a>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="social-links" aria-label="Social profiles">
+              {% if site.social.github %}
+              <a href="{{ site.social.github }}" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <dev-social-icon platform="github"></dev-social-icon>
+              </a>
+              {% endif %}
+              {% if site.social.linkedin %}
+              <a href="{{ site.social.linkedin }}" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                <dev-social-icon platform="linkedin"></dev-social-icon>
+              </a>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {# Footer navigation columns #}
+        {% if slots['footer-nav-column'] %}
+        <div class="footer-nav-columns">
+          {% for col in slots['footer-nav-column'] %}
+          <div class="footer-nav-col">
+            <h3 class="footer-col-title">{{ col.frontmatter.title }}</h3>
+            <div>{{ col.html_body | safe }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# Footer bottom bar #}
+      <div class="footer-bottom">
+        {% if slots['footer-bottom'] %}
+          {{ slots['footer-bottom'][0].html_body | safe }}
+        {% else %}
+          <p>© {{ "now" | date(format="%Y") }} {{ site.author.name }}.
+            Built with <a href="https://github.com/your-repo/ferrosite">ferrosite</a>.</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </footer>
+
+  <script>
+    // Nav toggle for mobile
+    document.querySelector('.nav-toggle')?.addEventListener('click', function() {
+      const expanded = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', !expanded);
+      document.getElementById('nav-menu')?.classList.toggle('open');
+    });
+  </script>
+</body>
+</html>

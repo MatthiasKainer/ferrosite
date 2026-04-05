@@ -1,0 +1,16 @@
+{
+  "name": "ferrosite-ssr",
+  "version": "1.0.0",
+  "description": "Puppeteer SSR pass for ferrosite pfusch components",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "^23.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
