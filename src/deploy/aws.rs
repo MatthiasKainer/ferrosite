@@ -122,6 +122,96 @@ const CORS_HEADERS = {{
   "Content-Type": "application/json",
 }};
 
+function defaultCommandName() {{
+    return COMMANDS.length === 1 ? COMMANDS[0].name : null;
+}}
+
+function wantsJsonResponse(headers) {{
+    return headerValue(headers, "accept").toLowerCase().includes("application/json");
+}}
+
+function normalizeRedirectTarget(target) {{
+    if (typeof target !== "string") {{
+        return "/contact/";
+    }}
+
+    if (!target.startsWith("/") || target.startsWith("//")) {{
+        return "/contact/";
+    }}
+
+    return target;
+}}
+
+function redirectLocation(payload, status) {{
+    const base = normalizeRedirectTarget(payload?.redirect_to);
+    const url = new URL(base, "https://ferrosite.local");
+    url.hash = status === "success" ? "contact-form-success" : "contact-form-error";
+    return `${{url.pathname}}${{url.search}}${{url.hash}}`;
+}}
+
+function redirectResponse(location) {{
+    return {{
+        statusCode: 303,
+        headers: {{
+            ...CORS_HEADERS,
+            Location: location,
+        }},
+        body: "",
+    }};
+}}
+
+function normalizeCommandEnvelope(body) {{
+    const raw = body && typeof body === "object" && !Array.isArray(body) ? body : {{}};
+
+    if (typeof raw.command === "string" && raw.payload && typeof raw.payload === "object" && !Array.isArray(raw.payload)) {{
+        return {{ command: raw.command, payload: raw.payload }};
+    }}
+
+    if (typeof raw.command === "string") {{
+        const {{ command, ...payload }} = raw;
+        return {{ command, payload }};
+    }}
+
+    const inferred = defaultCommandName();
+    if (inferred) {{
+        return {{ command: inferred, payload: raw }};
+    }}
+
+    throw new Error("Command is required");
+}}
+
+function headerValue(headers, name) {{
+    if (!headers) {{
+        return "";
+    }}
+
+    const direct = headers[name] ?? headers[name.toLowerCase()] ?? headers[name.toUpperCase()];
+    if (typeof direct === "string") {{
+        return direct;
+    }}
+
+    return "";
+}}
+
+function parseCommandRequest(rawBody, contentType) {{
+    if (rawBody && typeof rawBody === "object") {{
+        return normalizeCommandEnvelope(rawBody);
+    }}
+
+    const raw = typeof rawBody === "string" ? rawBody : "";
+    const normalizedType = (contentType || "").toLowerCase();
+
+    if (!raw.trim()) {{
+        return normalizeCommandEnvelope({{}});
+    }}
+
+    if (normalizedType.includes("application/x-www-form-urlencoded") || raw.includes("=")) {{
+        return normalizeCommandEnvelope(Object.fromEntries(new URLSearchParams(raw).entries()));
+    }}
+
+    return normalizeCommandEnvelope(JSON.parse(raw));
+}}
+
 {worker_source}
 
 function jsonResponse(body, statusCode = 200) {{
@@ -149,9 +239,8 @@ exports.handler = async function(event, context) {{
       const decodedBody = event?.isBase64Encoded
         ? Buffer.from(rawBody, "base64").toString("utf8")
         : rawBody;
-      const body = JSON.parse(decodedBody || "{{}}");
-      const command = body.command;
-      const payload = body.payload;
+            const contentType = headerValue(event?.headers, "content-type");
+            const {{ command, payload }} = parseCommandRequest(decodedBody, contentType);
 
       const known = COMMANDS.find(c => c.name === command);
       if (!known) {{
@@ -159,6 +248,9 @@ exports.handler = async function(event, context) {{
       }}
 
       const result = await handleCommand(command, payload, process.env, context);
+            if (!wantsJsonResponse(event?.headers)) {{
+                return redirectResponse(redirectLocation(payload, "success"));
+            }}
       return jsonResponse({{ ok: true, result }});
     }}
 
@@ -176,7 +268,19 @@ exports.handler = async function(event, context) {{
     }}
 
     return jsonResponse({{ error: "Method not allowed" }}, 405);
-  }} catch (err) {{
+    }} catch (err) {{
+        if (method === "POST" && !wantsJsonResponse(event?.headers)) {{
+            try {{
+                const rawBody = event?.body || "";
+                const decodedBody = event?.isBase64Encoded
+                    ? Buffer.from(rawBody, "base64").toString("utf8")
+                    : rawBody;
+                const payload = parseCommandRequest(decodedBody, headerValue(event?.headers, "content-type"));
+                return redirectResponse(redirectLocation(payload.payload || payload, "error"));
+            }} catch {{
+                return redirectResponse(redirectLocation({{}}, "error"));
+            }}
+        }}
     return jsonResponse({{ error: err.message }}, 500);
   }}
 }};
@@ -225,5 +329,8 @@ mod tests {
     fn generates_lambda_wrapper() {
         let output = generate_aws_lambda_worker(&fixture_plugin());
         assert!(output.contains("exports.handler = async function"));
+        assert!(output.contains("parseCommandRequest"));
+        assert!(output.contains("URLSearchParams"));
+        assert!(output.contains("contact-form-success"));
     }
 }

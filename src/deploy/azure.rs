@@ -113,6 +113,86 @@ const CORS_HEADERS = {{
   "Content-Type": "application/json",
 }};
 
+function defaultCommandName() {{
+  return COMMANDS.length === 1 ? COMMANDS[0].name : null;
+}}
+
+function wantsJsonResponse(headers) {{
+  return headerValue(headers, "accept").toLowerCase().includes("application/json");
+}}
+
+function normalizeRedirectTarget(target) {{
+  if (typeof target !== "string") {{
+    return "/contact/";
+  }}
+
+  if (!target.startsWith("/") || target.startsWith("//")) {{
+    return "/contact/";
+  }}
+
+  return target;
+}}
+
+function redirectLocation(payload, status) {{
+  const base = normalizeRedirectTarget(payload?.redirect_to);
+  const url = new URL(base, "https://ferrosite.local");
+  url.hash = status === "success" ? "contact-form-success" : "contact-form-error";
+  return `${{url.pathname}}${{url.search}}${{url.hash}}`;
+}}
+
+function normalizeCommandEnvelope(body) {{
+  const raw = body && typeof body === "object" && !Array.isArray(body) ? body : {{}};
+
+  if (typeof raw.command === "string" && raw.payload && typeof raw.payload === "object" && !Array.isArray(raw.payload)) {{
+    return {{ command: raw.command, payload: raw.payload }};
+  }}
+
+  if (typeof raw.command === "string") {{
+    const {{ command, ...payload }} = raw;
+    return {{ command, payload }};
+  }}
+
+  const inferred = defaultCommandName();
+  if (inferred) {{
+    return {{ command: inferred, payload: raw }};
+  }}
+
+  throw new Error("Command is required");
+}}
+
+function headerValue(headers, name) {{
+  if (!headers) {{
+    return "";
+  }}
+
+  const direct = headers[name] ?? headers[name.toLowerCase()] ?? headers[name.toUpperCase()];
+  if (typeof direct === "string") {{
+    return direct;
+  }}
+
+  return "";
+}}
+
+function parseCommandRequest(req) {{
+  const rawBody = req?.body ?? req?.rawBody ?? {{}};
+  if (rawBody && typeof rawBody === "object") {{
+    return normalizeCommandEnvelope(rawBody);
+  }}
+
+  const raw = typeof rawBody === "string" ? rawBody : "";
+  const contentType = headerValue(req?.headers, "content-type").toLowerCase();
+
+  if (!raw.trim()) {{
+    return normalizeCommandEnvelope({{}});
+  }}
+
+  if (contentType.includes("application/x-www-form-urlencoded") || raw.includes("=")) {{
+    return normalizeCommandEnvelope(Object.fromEntries(new URLSearchParams(raw).entries()));
+  }}
+
+  return normalizeCommandEnvelope(JSON.parse(raw));
+}}
+
 {worker_source}
 
 function response(body, status = 200) {{
@@ -120,6 +200,17 @@ function response(body, status = 200) {{
     status,
     headers: CORS_HEADERS,
     body: JSON.stringify(body),
+  }};
+}}
+
+function redirectResponse(location) {{
+  return {{
+    status: 303,
+    headers: {{
+      ...CORS_HEADERS,
+      Location: location,
+    }},
+    body: "",
   }};
 }}
 
@@ -137,9 +228,7 @@ module.exports = async function(context, req) {{
 
   try {{
     if (method === "POST") {{
-      const body = req?.body || {{}};
-      const command = body.command;
-      const payload = body.payload;
+      const {{ command, payload }} = parseCommandRequest(req);
 
       const known = COMMANDS.find(c => c.name === command);
       if (!known) {{
@@ -148,6 +237,10 @@ module.exports = async function(context, req) {{
       }}
 
       const result = await handleCommand(command, payload, process.env, context);
+      if (!wantsJsonResponse(req?.headers)) {{
+        context.res = redirectResponse(redirectLocation(payload, "success"));
+        return;
+      }}
       context.res = response({{ ok: true, result }});
       return;
     }}
@@ -169,6 +262,15 @@ module.exports = async function(context, req) {{
 
     context.res = response({{ error: "Method not allowed" }}, 405);
   }} catch (err) {{
+    if (method === "POST" && !wantsJsonResponse(req?.headers)) {{
+      try {{
+        const payload = parseCommandRequest(req);
+        context.res = redirectResponse(redirectLocation(payload.payload || payload, "error"));
+      }} catch {{
+        context.res = redirectResponse(redirectLocation({{}}, "error"));
+      }}
+      return;
+    }}
     context.res = response({{ error: err.message }}, 500);
   }}
 }};
@@ -217,6 +319,9 @@ mod tests {
     fn generates_azure_wrapper() {
         let output = generate_azure_function_worker(&fixture_plugin());
         assert!(output.contains("module.exports = async function"));
+      assert!(output.contains("parseCommandRequest"));
+      assert!(output.contains("URLSearchParams"));
+      assert!(output.contains("contact-form-success"));
     }
 }
 

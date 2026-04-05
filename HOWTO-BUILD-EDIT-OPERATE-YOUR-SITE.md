@@ -590,6 +590,69 @@ Use this for:
 `ferrosite run` is especially useful here because it serves the site locally and
 also routes plugin requests through the local worker runner.
 
+### How to update an existing plugin
+
+There is currently no dedicated `ferrosite plugin update` command.
+
+Use one of these workflows instead.
+
+#### A. update a plugin you maintain locally
+
+If the plugin already lives in your site's `plugins/` directory and you own the
+code:
+
+1. edit the plugin files directly:
+  - `plugins/<plugin-name>/manifest.toml`
+  - `plugins/<plugin-name>/component.js`
+  - `plugins/<plugin-name>/worker.js`
+2. if you changed the plugin name, slots, route, or component tag, also update
+  the matching references in your content and layouts
+3. keep the plugin listed in `plugins.enabled` inside `ferrosite.toml`
+4. run `ferrosite run` and test the page plus worker route together
+
+#### B. update a plugin installed from git
+
+If the plugin directory is a git checkout:
+
+```bash
+cd plugins/<plugin-name>
+git pull
+```
+
+Then:
+
+1. review any manifest changes
+2. check whether new environment variables are required
+3. run `ferrosite run` to verify the updated component and worker
+
+#### C. refresh a bundled plugin shipped with ferrosite
+
+Bundled plugins are copied into your site at install time. They do not update
+automatically when ferrosite itself changes.
+
+To refresh one:
+
+```bash
+ferrosite plugin remove <plugin-name>
+ferrosite plugin add <plugin-name>
+```
+
+Important:
+
+- `plugin remove` deletes the installed plugin directory from your site
+- it also prints files that still reference that plugin so you can review them
+- if you made local changes inside `plugins/<plugin-name>/`, back them up first
+
+#### Recommended verification checklist
+
+After any plugin update:
+
+1. confirm `plugins.enabled` still contains the plugin name
+2. confirm the worker route in `manifest.toml` still matches your forms or fetch calls
+3. confirm required env vars are set for local/dev/prod
+4. run `ferrosite run`
+5. exercise the page that renders the plugin and the worker endpoint it calls
+
 ---
 
 ## 14. Operating the contact form

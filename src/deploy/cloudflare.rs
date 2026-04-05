@@ -139,6 +139,91 @@ const CORS_HEADERS = {{
   "Access-Control-Allow-Headers": "Content-Type",
 }};
 
+function defaultCommandName() {{
+    return COMMANDS.length === 1 ? COMMANDS[0].name : null;
+}}
+
+function wantsJsonResponse(request) {{
+    const accept = (request.headers.get("accept") || "").toLowerCase();
+    return accept.includes("application/json");
+}}
+
+function normalizeRedirectTarget(target) {{
+    if (typeof target !== "string") {{
+        return "/contact/";
+    }}
+
+    if (!target.startsWith("/") || target.startsWith("//")) {{
+        return "/contact/";
+    }}
+
+    return target;
+}}
+
+function redirectLocation(payload, status) {{
+    const base = normalizeRedirectTarget(payload?.redirect_to);
+    const url = new URL(base, "https://ferrosite.local");
+    url.hash = status === "success" ? "contact-form-success" : "contact-form-error";
+    return `${{url.pathname}}${{url.search}}${{url.hash}}`;
+}}
+
+function redirectResponse(location) {{
+    return new Response(null, {{
+        status: 303,
+        headers: {{
+            ...CORS_HEADERS,
+            Location: location,
+        }},
+    }});
+}}
+
+function normalizeCommandEnvelope(body) {{
+    const raw = body && typeof body === "object" && !Array.isArray(body) ? body : {{}};
+
+    if (typeof raw.command === "string" && raw.payload && typeof raw.payload === "object" && !Array.isArray(raw.payload)) {{
+        return {{ command: raw.command, payload: raw.payload }};
+    }}
+
+    if (typeof raw.command === "string") {{
+        const {{ command, ...payload }} = raw;
+        return {{ command, payload }};
+    }}
+
+    const inferred = defaultCommandName();
+    if (inferred) {{
+        return {{ command: inferred, payload: raw }};
+    }}
+
+    throw new Error("Command is required");
+}}
+
+async function parseCommandRequest(request) {{
+    const contentType = (request.headers.get("content-type") || "").toLowerCase();
+
+    if (contentType.includes("application/json")) {{
+        return normalizeCommandEnvelope(await request.json());
+    }}
+
+    if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {{
+        return normalizeCommandEnvelope(Object.fromEntries((await request.formData()).entries()));
+    }}
+
+    const raw = await request.text();
+    if (!raw.trim()) {{
+        return normalizeCommandEnvelope({{}});
+    }}
+
+    try {{
+        return normalizeCommandEnvelope(JSON.parse(raw));
+    }} catch (err) {{
+        if (contentType.includes("text/plain") || raw.includes("=")) {{
+            return normalizeCommandEnvelope(Object.fromEntries(new URLSearchParams(raw).entries()));
+        }}
+
+        throw err;
+    }}
+}}
+
 {worker_source}
 
 export default {{
@@ -148,12 +233,12 @@ export default {{
     }}
 
     const url = new URL(request.url);
+        let submittedPayload = {{}};
 
     try {{
       if (request.method === "POST") {{
-        const body = await request.json();
-        const command = body.command;
-        const payload = body.payload;
+                const {{ command, payload }} = await parseCommandRequest(request);
+                submittedPayload = payload;
 
         const known = COMMANDS.find(c => c.name === command);
         if (!known) {{
@@ -161,6 +246,9 @@ export default {{
         }}
 
         const result = await handleCommand(command, payload, env, ctx);
+                if (!wantsJsonResponse(request)) {{
+                    return redirectResponse(redirectLocation(payload, "success"));
+                }}
         return Response.json({{ ok: true, result }}, {{ headers: CORS_HEADERS }});
       }}
 
@@ -178,7 +266,10 @@ export default {{
       }}
 
       return Response.json({{ error: "Method not allowed" }}, {{ status: 405, headers: CORS_HEADERS }});
-    }} catch (err) {{
+        }} catch (err) {{
+            if (request.method === "POST" && !wantsJsonResponse(request)) {{
+                return redirectResponse(redirectLocation(submittedPayload, "error"));
+            }}
       return Response.json({{ error: err.message }}, {{ status: 500, headers: CORS_HEADERS }});
     }}
   }}
@@ -243,5 +334,8 @@ mod tests {
     fn generates_cloudflare_wrapper() {
         let output = generate_cloudflare_worker(&fixture_plugin());
         assert!(output.contains("export default"));
+        assert!(output.contains("parseCommandRequest"));
+        assert!(output.contains("URLSearchParams"));
+        assert!(output.contains("contact-form-success"));
     }
 }

@@ -240,6 +240,24 @@ ferrosite plugin remove contact-form
 
 `plugin remove` also has the alias `plugin uninstall`, and `plugin add` has the alias `plugin install`.
 
+There is currently no dedicated `ferrosite plugin update` command.
+
+To update an existing plugin:
+
+1. identify how it was installed
+    - bundled plugin copied into your site's `plugins/` folder
+    - git-based plugin cloned into your site's `plugins/` folder
+    - custom/local plugin you maintain directly in `plugins/`
+2. update the files in `plugins/<plugin-name>/`
+    - for a git-based plugin: run `git pull` inside that plugin directory
+    - for a bundled plugin: either copy changes in manually, or run `ferrosite plugin remove <name>` followed by `ferrosite plugin add <name>`
+    - for a local/custom plugin: edit `manifest.toml`, `component.js`, and `worker.js` directly
+3. verify `plugins.enabled` in `ferrosite.toml` still contains the plugin name
+4. run `ferrosite run` to test the worker route and UI together
+5. rebuild or redeploy once the updated plugin works as expected
+
+For bundled plugins, `plugin remove` prints files that still reference the plugin so you can update layouts, slots, or content before re-installing or replacing it.
+
 ---
 
 ## Deploy

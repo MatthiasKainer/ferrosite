@@ -418,6 +418,28 @@ a:hover { text-decoration: underline; }
 .contact-channel:hover { color: var(--color-primary); text-decoration: none; }
 .channel-icon { font-size: 1.1rem; width: 1.5rem; text-align: center; }
 .contact-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.contact-form-status {
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.contact-form-redirect-message {
+  display: none;
+}
+.contact-form-redirect-message:target {
+  display: block;
+}
+.contact-form-status-success {
+  color: #79e2b6;
+  border: 1px solid rgba(121, 226, 182, 0.26);
+  background: rgba(20, 138, 98, 0.12);
+}
+.contact-form-status-error {
+  color: #ff9f95;
+  border: 1px solid rgba(255, 159, 149, 0.24);
+  background: rgba(196, 76, 70, 0.12);
+}
 .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
 .form-group label { font-size: 0.875rem; font-weight: 500; color: var(--color-text-muted); }
 .form-group input, .form-group textarea {

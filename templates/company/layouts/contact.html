@@ -32,11 +32,40 @@
 
     <aside class="form-panel">
       <div class="section-kicker">Start a conversation</div>
+      <div id="contact-form-success" class="contact-form-status contact-form-status-success contact-form-redirect-message" tabindex="-1">
+        Message sent. We will reply soon.
+      </div>
+      <div id="contact-form-error" class="contact-form-status contact-form-status-error contact-form-redirect-message" tabindex="-1">
+        We could not send your message. Please try again or email us directly.
+      </div>
       {% if slots['contact-form'] %}
         {% set form_slot = slots['contact-form'][0] %}
-        <ferrosite-contact-form endpoint="{{ form_slot.frontmatter.url | default(value='/api/contact') }}"></ferrosite-contact-form>
+        <ferrosite-contact-form endpoint="{{ form_slot.frontmatter.url | default(value='/api/contact') }}">
+          <form class="contact-form" action="{{ form_slot.frontmatter.url | default(value='/api/contact') }}" method="POST">
+            <input type="hidden" name="redirect_to" value="/contact/">
+            <div class="field">
+              <label for="name">Name</label>
+              <input type="text" id="name" name="name" required autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" required autocomplete="email">
+            </div>
+            <div class="field">
+              <label for="subject">Subject</label>
+              <input type="text" id="subject" name="subject">
+            </div>
+            <div class="field">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" rows="8" required></textarea>
+            </div>
+            <button class="button-link primary" type="submit">Send message</button>
+          </form>
+        </ferrosite-contact-form>
       {% else %}
-        <form class="contact-form" action="/api/contact" method="POST">
+        <div class="contact-form-status" data-contact-form-status role="status" aria-live="polite" hidden></div>
+        <form class="contact-form" action="/api/contact" method="POST" data-contact-form-inline>
+          <input type="hidden" name="redirect_to" value="/contact/">
           <div class="field">
             <label for="name">Name</label>
             <input type="text" id="name" name="name" required autocomplete="name">
@@ -55,6 +84,58 @@
           </div>
           <button class="button-link primary" type="submit">Send message</button>
         </form>
+        <script>
+          (() => {
+            const form = document.querySelector('[data-contact-form-inline]');
+            const statusEl = document.querySelector('[data-contact-form-status]');
+            if (!form || !statusEl) return;
+
+            const controls = Array.from(form.elements).filter((element) => 'disabled' in element);
+
+            const setBusy = (busy) => {
+              controls.forEach((element) => {
+                element.disabled = busy;
+              });
+            };
+
+            const showStatus = (kind, message) => {
+              statusEl.hidden = false;
+              statusEl.className = `contact-form-status contact-form-status-${kind}`;
+              statusEl.textContent = message;
+            };
+
+            form.addEventListener('submit', async (event) => {
+              event.preventDefault();
+              setBusy(true);
+              statusEl.hidden = true;
+
+              try {
+                const payload = new URLSearchParams(new FormData(form));
+                const response = await fetch(form.action, {
+                  method: form.method || 'POST',
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json',
+                  },
+                  body: payload,
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                const data = contentType.includes('application/json') ? await response.json() : null;
+                if (!response.ok || !data?.ok) {
+                  throw new Error(data?.error || `Request failed (${response.status})`);
+                }
+
+                form.reset();
+                showStatus('success', 'Message sent. We will reply soon.');
+              } catch (error) {
+                showStatus('error', error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+              } finally {
+                setBusy(false);
+              }
+            });
+          })();
+        </script>
       {% endif %}
     </aside>
   </div>

@@ -623,6 +623,33 @@ ferrosite-contact-form {
   gap: 1rem;
 }
 
+.contact-form-status {
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  font-weight: 600;
+}
+
+.contact-form-redirect-message {
+  display: none;
+}
+
+.contact-form-redirect-message:target {
+  display: block;
+}
+
+.contact-form-status-success {
+  color: #116149;
+  border: 1px solid rgba(17, 97, 73, 0.22);
+  background: rgba(17, 97, 73, 0.08);
+}
+
+.contact-form-status-error {
+  color: #b1382f;
+  border: 1px solid rgba(177, 56, 47, 0.22);
+  background: rgba(177, 56, 47, 0.08);
+}
+
 .contact-form .field {
   display: grid;
   gap: 0.45rem;
