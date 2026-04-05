@@ -90,19 +90,25 @@ impl Deployer for CloudflareDeployer {
         for plugin in plugins.workers() {
             let worker_name = format!("{}-worker", plugin.manifest.name);
             let worker_file = workers_dir.join(format!("{}.worker.js", plugin.manifest.name));
+            let worker_config = workers_dir.join(format!("{}.wrangler.toml", plugin.manifest.name));
             std::fs::write(&worker_file, generate_cloudflare_worker(plugin))?;
+            std::fs::write(
+                &worker_config,
+                generate_worker_wrangler_toml(&worker_name, worker_file.file_name().and_then(|name| name.to_str()).unwrap_or("worker.js")),
+            )?;
 
             println!("  Deploying worker: {}", worker_name);
 
-            let output = std::process::Command::new("wrangler")
+            let mut command = std::process::Command::new("wrangler");
+            command
                 .args([
                     "deploy",
-                    worker_file.to_str().unwrap_or(""),
-                    "--name",
-                    &worker_name,
-                    "--compatibility-date",
-                    "2024-01-01",
-                ])
+                    "--config",
+                    worker_config.to_str().unwrap_or("wrangler.toml"),
+                ]);
+
+            let output = command
+                .env_or_require("CLOUDFLARE_ACCOUNT_ID", &self.config.account_id)?
                 .output()
                 .map_err(|e| SiteError::Deploy {
                     provider: "cloudflare".into(),
@@ -286,7 +292,6 @@ export default {{
 fn generate_wrangler_toml(config: &CloudflareDeployConfig) -> String {
     format!(
         r#"name = "{project_name}"
-account_id = "{account_id}"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
 
@@ -294,7 +299,16 @@ compatibility_date = "2024-01-01"
 ENVIRONMENT = "production"
 "#,
         project_name = config.project_name,
-        account_id = config.account_id,
+    )
+}
+
+fn generate_worker_wrangler_toml(worker_name: &str, worker_entrypoint: &str) -> String {
+    format!(
+        r#"name = "{worker_name}"
+main = "{worker_entrypoint}"
+compatibility_date = "2024-01-01"
+workers_dev = true
+"#,
     )
 }
 
@@ -337,5 +351,29 @@ mod tests {
         assert!(output.contains("parseCommandRequest"));
         assert!(output.contains("URLSearchParams"));
         assert!(output.contains("contact-form-success"));
+    }
+
+    #[test]
+    fn pages_wrangler_config_omits_account_id() {
+        let output = generate_wrangler_toml(&CloudflareDeployConfig {
+            project_name: "matthias-kainer".into(),
+            account_id: "abc123".into(),
+            workers_subdomain: None,
+            domain: None,
+        });
+
+        assert!(output.contains("name = \"matthias-kainer\""));
+        assert!(output.contains("pages_build_output_dir = \"dist\""));
+        assert!(!output.contains("account_id"));
+    }
+
+    #[test]
+    fn worker_wrangler_config_uses_worker_fields_only() {
+        let output = generate_worker_wrangler_toml("contact-form-worker", "contact-form.worker.js");
+
+        assert!(output.contains("name = \"contact-form-worker\""));
+        assert!(output.contains("main = \"contact-form.worker.js\""));
+        assert!(output.contains("workers_dev = true"));
+        assert!(!output.contains("pages_build_output_dir"));
     }
 }
