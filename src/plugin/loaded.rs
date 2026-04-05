@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::error::{io_with_path, SiteError, SiteResult};
-use crate::template::component::ComponentDef;
+use crate::template::component::{parse_component_tag_names, ComponentDef};
 
 use super::manifest::parse_manifest;
 use super::{HeadInjectionKind, PluginManifest};
@@ -58,7 +58,8 @@ impl Plugin {
         ComponentDef {
             name: self.manifest.name.clone(),
             source: self.component_source.clone(),
-            requires_ssr: false,
+            requires_ssr: self.component_source.contains("// @ssr"),
+            tag_names: parse_component_tag_names(&self.component_source),
         }
     }
 

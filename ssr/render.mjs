@@ -4,14 +4,16 @@
 //
 // Usage:
 //   node render.mjs <path-to-html-file> [--root ./dist] [--route /] [--timeout 30000] [--port 7621]
+//   node render.mjs --manifest .ferrosite-cache/ssr-batch.json
 //
-// Outputs the fully pre-rendered HTML to stdout.
-// The Rust build pipeline reads this output to replace the intermediate file.
+// Single-file mode outputs the fully pre-rendered HTML to stdout.
+// Batch mode reuses one browser across many pages and writes rendered HTML back
+// to the output files listed in the manifest.
 //
 // Based on: https://github.com/MatthiasKainer/pfusch/tree/main/showcase/social-example-ssr
 // Uses getHTML({ includeShadowRoots: true, serializableShadowRoots: true })
 
-import { existsSync, readFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { resolve, dirname, extname, join } from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
@@ -21,7 +23,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── CLI args ───────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
-const htmlFile = args[0];
+const htmlFile = args[0]?.startsWith("--") ? "" : args[0];
 
 function getArgValue(flag, fallback) {
   const index = args.indexOf(flag);
@@ -30,14 +32,16 @@ function getArgValue(flag, fallback) {
 
 const timeout = parseInt(getArgValue("--timeout", "30000"), 10);
 const port = parseInt(getArgValue("--port", "7621"), 10);
+const manifestPath = getArgValue("--manifest", "");
 
-if (!htmlFile) {
+if (!htmlFile && !manifestPath) {
   console.error("Usage: node render.mjs <html-file> [--root dir] [--route /path] [--timeout ms] [--port n]");
+  console.error("   or: node render.mjs --manifest path/to/ssr-batch.json");
   process.exit(1);
 }
 
-const htmlPath = resolve(htmlFile);
-const rootDir = resolve(getArgValue("--root", dirname(htmlPath)));
+const htmlPath = htmlFile ? resolve(htmlFile) : "";
+const rootDir = htmlFile ? resolve(getArgValue("--root", dirname(htmlPath))) : "";
 const routePath = normalizeRoute(getArgValue("--route", "/"));
 
 // ── Local static file server used during the SSR pass ──────────────────────────
@@ -64,24 +68,24 @@ function sanitizeRequestPath(pathname) {
   return safeSegments;
 }
 
-function resolveRequestPath(rootDir, pathname) {
+function resolveRequestPath(rootPath, pathname) {
   const safeSegments = sanitizeRequestPath(pathname);
   if (safeSegments === null) {
     return null;
   }
 
-  const direct = join(rootDir, ...safeSegments);
+  const direct = join(rootPath, ...safeSegments);
   if (existsSync(direct) && statSync(direct).isFile()) {
     return direct;
   }
 
-  const index = join(rootDir, ...safeSegments, "index.html");
+  const index = join(rootPath, ...safeSegments, "index.html");
   if (existsSync(index) && statSync(index).isFile()) {
     return index;
   }
 
   if (safeSegments.length === 0) {
-    const rootIndex = join(rootDir, "index.html");
+    const rootIndex = join(rootPath, "index.html");
     if (existsSync(rootIndex) && statSync(rootIndex).isFile()) {
       return rootIndex;
     }
@@ -123,11 +127,11 @@ function guessMimeType(filePath) {
   }
 }
 
-async function serveFile(rootDir, routePath, port) {
+async function serveRoot(rootPath, requestedPort) {
   return new Promise((resolveServer) => {
     const server = createServer((req, res) => {
-      const requestUrl = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
-      const filePath = resolveRequestPath(rootDir, decodeURIComponent(requestUrl.pathname));
+      const requestUrl = new URL(req.url ?? "/", "http://127.0.0.1");
+      const filePath = resolveRequestPath(rootPath, decodeURIComponent(requestUrl.pathname));
 
       if (!filePath) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
@@ -149,148 +153,203 @@ async function serveFile(rootDir, routePath, port) {
       res.end(body);
     });
 
-    server.listen(port, "127.0.0.1", () => {
-      resolveServer({ server, url: `http://127.0.0.1:${port}${routePath}` });
+    server.listen(requestedPort, "127.0.0.1", () => {
+      const address = server.address();
+      const actualPort = typeof address === "object" && address ? address.port : requestedPort;
+      resolveServer({ server, baseUrl: `http://127.0.0.1:${actualPort}` });
     });
   });
 }
 
-// ── Main SSR routine ───────────────────────────────────────────────────────────
+function closeServer(server) {
+  return new Promise((resolveClose) => {
+    server.close(() => resolveClose());
+  });
+}
 
-async function ssr(url, timeoutMs) {
-  // Dynamic import of puppeteer (installed separately in ssr/)
+// ── Main SSR routines ──────────────────────────────────────────────────────────
+
+async function launchBrowser() {
   const puppeteer = (await import("puppeteer")).default;
 
-  const browser = await puppeteer.launch({
+  return puppeteer.launch({
     headless: "new",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--enable-experimental-web-platform-features",  // needed for declarative shadow DOM
+      "--enable-experimental-web-platform-features",
     ],
   });
+}
 
+async function renderUrl(browser, url, timeoutMs, label = url) {
   const page = await browser.newPage();
 
-  // Suppress console noise from the page itself
   page.on("console", (msg) => {
     if (msg.type() === "error") {
-      process.stderr.write(`[page error] ${msg.text()}\n`);
+      process.stderr.write(`[page error] ${label}: ${msg.text()}\n`);
     }
   });
 
-  await page.goto(url, {
-    waitUntil: "networkidle0",
-    timeout: timeoutMs,
-  });
+  try {
+    await page.goto(url, {
+      waitUntil: "networkidle0",
+      timeout: timeoutMs,
+    });
 
-  // Wait for pfusch components to hydrate
-  await page.waitForFunction(
-    () => {
-      // TODO: That's a bit brittle, find a better way
-      const components = document.querySelectorAll(
-        "dev-project-card, dev-blog-card, dev-blog-filter, dev-nav-menu, " +
-        "dev-dock, dev-timeline-entry, dev-toc, dev-share-buttons, " +
-        "dev-social-icon, ferrosite-contact-form, dev-project-grid"
-      );
-      if (components.length === 0) return true; // no components = fine
-      // All components must have a shadow root
-      return [...components].every((el) => el.shadowRoot !== null);
-    },
-    { timeout: timeoutMs }
-  );
+    await page.waitForFunction(
+      () => {
+        const components = document.querySelectorAll(
+          "dev-project-card, dev-blog-card, dev-blog-filter, dev-nav-menu, " +
+          "dev-dock, dev-timeline-entry, dev-toc, dev-share-buttons, " +
+          "dev-social-icon, ferrosite-contact-form, dev-project-grid"
+        );
+        if (components.length === 0) return true;
+        return [...components].every((el) => el.shadowRoot !== null);
+      },
+      { timeout: timeoutMs }
+    );
 
-  await page.evaluate(() => {
-    const STYLE_MARKER_ATTR = "data-ferrosite-ssr-adopted-styles";
+    await page.evaluate(() => {
+      const STYLE_MARKER_ATTR = "data-ferrosite-ssr-adopted-styles";
 
-    function serializeSheet(sheet) {
-      try {
-        return Array.from(sheet.cssRules || [])
-          .map((rule) => rule.cssText)
+      function serializeSheet(sheet) {
+        try {
+          return Array.from(sheet.cssRules || [])
+            .map((rule) => rule.cssText)
+            .join("\n");
+        } catch {
+          return "";
+        }
+      }
+
+      function materializeRootStyles(root) {
+        if (!root || !("adoptedStyleSheets" in root)) {
+          return;
+        }
+
+        const cssText = Array.from(root.adoptedStyleSheets || [])
+          .map(serializeSheet)
+          .filter(Boolean)
           .join("\n");
-      } catch {
-        return "";
-      }
-    }
 
-    function materializeRootStyles(root) {
-      if (!root || !("adoptedStyleSheets" in root)) {
-        return;
-      }
+        if (!cssText) {
+          return;
+        }
 
-      const cssText = Array.from(root.adoptedStyleSheets || [])
-        .map(serializeSheet)
-        .filter(Boolean)
-        .join("\n");
+        const container = root instanceof Document ? root.head : root;
+        if (!container) {
+          return;
+        }
 
-      if (!cssText) {
-        return;
-      }
+        let styleEl = container.querySelector(`style[${STYLE_MARKER_ATTR}]`);
+        if (!styleEl) {
+          styleEl = document.createElement("style");
+          styleEl.setAttribute(STYLE_MARKER_ATTR, "true");
+          container.insertBefore(styleEl, container.firstChild);
+        }
 
-      const container = root instanceof Document ? root.head : root;
-      if (!container) {
-        return;
+        styleEl.textContent = cssText;
       }
 
-      let styleEl = container.querySelector(`style[${STYLE_MARKER_ATTR}]`);
-      if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.setAttribute(STYLE_MARKER_ATTR, "true");
-        container.insertBefore(styleEl, container.firstChild);
-      }
+      function walk(node) {
+        if (!node) {
+          return;
+        }
 
-      styleEl.textContent = cssText;
-    }
+        if (node.shadowRoot) {
+          materializeRootStyles(node.shadowRoot);
+          for (const child of node.shadowRoot.children) {
+            walk(child);
+          }
+        }
 
-    function walk(node) {
-      if (!node) {
-        return;
-      }
-
-      if (node.shadowRoot) {
-        materializeRootStyles(node.shadowRoot);
-        for (const child of node.shadowRoot.children) {
+        for (const child of node.children || []) {
           walk(child);
         }
       }
 
-      for (const child of node.children || []) {
-        walk(child);
+      walk(document.documentElement);
+    });
+
+    const html = await page.$eval("html", (el) =>
+      el.getHTML({ includeShadowRoots: true, serializableShadowRoots: true })
+    );
+
+    return `<!DOCTYPE html>\n<html ${html}`;
+  } finally {
+    await page.close();
+  }
+}
+
+async function runWithConcurrency(items, concurrency, worker) {
+  const limit = Math.max(1, Math.min(concurrency, items.length || 1));
+  let nextIndex = 0;
+
+  await Promise.all(
+    Array.from({ length: limit }, async () => {
+      while (true) {
+        const index = nextIndex++;
+        if (index >= items.length) {
+          return;
+        }
+
+        await worker(items[index], index);
       }
-    }
-
-    walk(document.documentElement);
-  });
-
-  // Capture fully serialised HTML including shadow roots
-  // This is the key pfusch SSR technique from the showcase
-  const html = await page.$eval("html", (el) =>
-    el.getHTML({ includeShadowRoots: true, serializableShadowRoots: true })
+    })
   );
+}
 
-  await browser.close();
-  return `<!DOCTYPE html>\n<html ${html}`;
+async function renderBatch(manifest) {
+  const { server, baseUrl } = await serveRoot(resolve(manifest.rootDir), 0);
+  const browser = await launchBrowser();
+
+  try {
+    await runWithConcurrency(
+      manifest.jobs || [],
+      Number.parseInt(`${manifest.concurrency ?? 2}`, 10) || 2,
+      async (job) => {
+        const url = `${baseUrl}${normalizeRoute(job.routePath)}`;
+        const renderedHtml = await renderUrl(browser, url, manifest.timeoutMs, job.routePath);
+        mkdirSync(dirname(job.outputPath), { recursive: true });
+        writeFileSync(job.outputPath, renderedHtml, "utf8");
+      }
+    );
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+}
+
+async function renderSingleFile(htmlPathArg, rootPathArg, routePathArg, timeoutMs, requestedPort) {
+  const { server, baseUrl } = await serveRoot(rootPathArg, requestedPort);
+  const browser = await launchBrowser();
+
+  try {
+    const renderedHtml = await renderUrl(browser, `${baseUrl}${routePathArg}`, timeoutMs, routePathArg);
+    process.stdout.write(renderedHtml);
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
 }
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { server, url } = await serveFile(rootDir, routePath, port);
-
-  try {
-    const renderedHtml = await ssr(url, timeout);
-    server.close();
-    process.stdout.write(renderedHtml);
-  } catch (err) {
-    server.close();
-    process.stderr.write(`SSR failed: ${err.message}\n`);
-    // On failure, output the original HTML unchanged so the build doesn't break
-    process.stdout.write(readFileSync(htmlPath, "utf8"));
-    process.exit(1);
+  if (manifestPath) {
+    const manifest = JSON.parse(readFileSync(resolve(manifestPath), "utf8"));
+    await renderBatch(manifest);
+    return;
   }
+
+  await renderSingleFile(htmlPath, rootDir, routePath, timeout, port);
 }
 
 main().catch((err) => {
-  process.stderr.write(`Fatal: ${err.message}\n`);
+  process.stderr.write(`SSR failed: ${err.message}\n`);
+  if (htmlPath) {
+    process.stdout.write(readFileSync(htmlPath, "utf8"));
+  }
   process.exit(1);
 });

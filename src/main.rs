@@ -2080,6 +2080,7 @@ enabled = false
 node_bin = "node"
 package_manager_bin = "npm"
 timeout_ms = 30000
+concurrency = 2
 
 [layout]
 menu = true

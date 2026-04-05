@@ -670,6 +670,11 @@ You usually do not need SSR for a mostly static site with minimal enhancement.
 Turn it on when pre-rendered component HTML materially improves SEO,
 accessibility, or zero-JS rendering.
 
+Ferrosite now runs SSR in batches: it skips pages that do not contain
+SSR-marked components, reuses one Puppeteer browser for the whole pass, and
+limits parallel page rendering with `[build.ssr].concurrency` so the renderer
+does not fan out into one Chromium process per page.
+
 ---
 
 ## 17. Safe release checklist

@@ -194,11 +194,12 @@ enabled = true
 node_bin = "node"
 package_manager_bin = "npm"
 timeout_ms = 30000
+concurrency = 2
 ```
 
 If you prefer another package manager, set `package_manager_bin = "pnpm"` or run `ferrosite ssr-setup --package-manager-bin yarn`.
 
-During `ferrosite build --ssr`, each generated HTML page is served locally and rendered by Puppeteer using `getHTML({ includeShadowRoots: true, serializableShadowRoots: true })`. The rendered shadow DOM is written back to the output HTML, giving you fully pre-rendered components with zero-JS content.
+During `ferrosite build --ssr`, Ferrosite batches only the pages that actually instantiate SSR-marked components, serves the generated site locally once, and reuses a single Puppeteer browser across the batch. Pages are rendered with bounded concurrency via `concurrency`, then the rendered shadow DOM is written back to the output HTML using `getHTML({ includeShadowRoots: true, serializableShadowRoots: true })`.
 
 ---
 

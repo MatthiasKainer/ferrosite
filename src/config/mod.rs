@@ -91,6 +91,9 @@ pub struct SsrConfig {
     /// Timeout per page in ms
     #[serde(default = "default_ssr_timeout")]
     pub timeout_ms: u32,
+    /// Maximum number of pages rendered concurrently by the shared browser
+    #[serde(default = "default_ssr_concurrency")]
+    pub concurrency: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -437,6 +440,9 @@ fn default_package_manager() -> String {
 fn default_ssr_timeout() -> u32 {
     30_000
 }
+fn default_ssr_concurrency() -> usize {
+    2
+}
 fn default_sidebar_position() -> String {
     "right".into()
 }
@@ -461,6 +467,7 @@ impl Default for SsrConfig {
             node_bin: default_node(),
             package_manager_bin: default_package_manager(),
             timeout_ms: default_ssr_timeout(),
+            concurrency: default_ssr_concurrency(),
         }
     }
 }
@@ -507,6 +514,7 @@ account_id = "abc123"
 
         let config: SiteConfig = toml::from_str(raw).expect("config should deserialize");
         assert_eq!(config.build.ssr.package_manager_bin, "npm");
+        assert_eq!(config.build.ssr.concurrency, 2);
     }
 
     #[test]
@@ -525,6 +533,7 @@ template = "developer"
 
 [build.ssr]
 package_manager_bin = "pnpm"
+concurrency = 4
 
 [deploy]
 provider = "cloudflare"
@@ -536,6 +545,7 @@ account_id = "abc123"
 
         let config: SiteConfig = toml::from_str(raw).expect("config should deserialize");
         assert_eq!(config.build.ssr.package_manager_bin, "pnpm");
+        assert_eq!(config.build.ssr.concurrency, 4);
     }
 
     #[test]

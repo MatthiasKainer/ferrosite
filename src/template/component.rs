@@ -20,6 +20,8 @@ pub struct ComponentDef {
     pub source: String,
     /// Whether this component requires SSR (Puppeteer pass)
     pub requires_ssr: bool,
+    /// Custom element tag names defined by this source file
+    pub tag_names: Vec<String>,
 }
 
 impl ComponentRegistry {
@@ -52,11 +54,13 @@ impl ComponentRegistry {
             let source = std::fs::read_to_string(path)
                 .map_err(io_with_path(path, "reading component file"))?;
             let requires_ssr = source.contains("// @ssr");
+            let tag_names = parse_component_tag_names(&source);
 
             registry.components.push(ComponentDef {
                 name,
                 source,
                 requires_ssr,
+                tag_names,
             });
         }
 
@@ -107,6 +111,44 @@ import {{ pfusch, html, css }} from "{}";
             .filter(|c| c.requires_ssr)
             .map(|c| c.name.as_str())
             .collect()
+    }
+
+    /// Custom element tags that should trigger an SSR pass when present on a page.
+    pub fn ssr_component_tags(&self) -> Vec<&str> {
+        self.components
+            .iter()
+            .filter(|c| c.requires_ssr)
+            .flat_map(|c| c.tag_names.iter().map(String::as_str))
+            .collect()
+    }
+}
+
+pub(crate) fn parse_component_tag_names(source: &str) -> Vec<String> {
+    let mut tags = Vec::new();
+    collect_tag_names(source, r#"pfusch(""#, &mut tags);
+    collect_tag_names(source, r#"pfusch('"#, &mut tags);
+    collect_tag_names(source, r#"customElements.define(""#, &mut tags);
+    collect_tag_names(source, r#"customElements.define('"#, &mut tags);
+    tags
+}
+
+fn collect_tag_names(source: &str, marker: &str, tags: &mut Vec<String>) {
+    let quote = marker.chars().last().unwrap_or('"');
+    let mut search_start = 0;
+
+    while let Some(offset) = source[search_start..].find(marker) {
+        let start = search_start + offset + marker.len();
+        let rest = &source[start..];
+        let Some(end) = rest.find(quote) else {
+            break;
+        };
+
+        let tag = &rest[..end];
+        if tag.contains('-') && !tags.iter().any(|existing| existing == tag) {
+            tags.push(tag.to_string());
+        }
+
+        search_start = start + end + 1;
     }
 }
 
@@ -191,11 +233,13 @@ mod tests {
                     name: "hero-card".into(),
                     source: "customElements.define('hero-card', class {});".into(),
                     requires_ssr: false,
+                    tag_names: vec!["hero-card".into()],
                 },
                 ComponentDef {
                     name: "contact-form".into(),
                     source: "// @ssr\ncustomElements.define('contact-form', class {});".into(),
                     requires_ssr: true,
+                    tag_names: vec!["contact-form".into()],
                 },
             ]);
 
@@ -206,6 +250,25 @@ mod tests {
         assert!(script.contains("// === contact-form ==="));
         assert!(registry.any_requires_ssr());
         assert_eq!(registry.ssr_components(), vec!["contact-form"]);
+        assert_eq!(registry.ssr_component_tags(), vec!["contact-form"]);
+    }
+
+    #[test]
+    fn parse_component_tag_names_collects_pfusch_and_custom_element_tags() {
+        let source = r#"
+pfusch("dev-project-card", {});
+customElements.define('ferrosite-contact-form', class {});
+pfusch("dev-project-grid", {});
+"#;
+
+        assert_eq!(
+            parse_component_tag_names(source),
+            vec![
+                "dev-project-card".to_string(),
+                "dev-project-grid".to_string(),
+                "ferrosite-contact-form".to_string(),
+            ]
+        );
     }
 
     #[test]

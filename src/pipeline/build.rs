@@ -411,6 +411,7 @@ fn has_about_body(articles: &[Article]) -> bool {
 // ── Step 4: Render pages ───────────────────────────────────────────────────────
 
 /// Rendered output for a single page.
+#[derive(Debug, Clone)]
 pub struct RenderedPage {
     pub url_path: String,
     pub output_path: PathBuf,
@@ -522,6 +523,15 @@ fn copy_dir_all(src: &Path, dst: &Path) -> SiteResult<()> {
 
 // ── SSR Pass ───────────────────────────────────────────────────────────────────
 
+#[derive(Debug)]
+struct PendingSsrJob {
+    index: usize,
+    url_path: String,
+    output_path: PathBuf,
+    file_path: PathBuf,
+    source_cache_path: PathBuf,
+}
+
 /// Run the Puppeteer SSR pass on rendered HTML — side effect: spawns Node.
 pub fn run_ssr_pass(
     rendered: &[RenderedPage],
@@ -539,40 +549,77 @@ pub fn run_ssr_pass(
             .collect());
     }
 
+    let ssr_tags = ctx.components.ssr_component_tags();
+    if ssr_tags.is_empty() {
+        return Ok(rendered.iter().cloned().collect());
+    }
+
     let ssr_script = find_ssr_script(&ctx.site_root)?;
+    let mut results: Vec<Option<RenderedPage>> = (0..rendered.len()).map(|_| None).collect();
+    let mut jobs = Vec::new();
 
-    rendered
-        .iter()
-        .map(|page| {
-            let file_path = output_dir.join(&page.output_path);
-            let source_cache_path = ssr_source_cache_path(&ctx.site_root, &page.output_path);
-            let source_changed = write_file_if_changed(&source_cache_path, page.html.as_bytes())?;
+    for (index, page) in rendered.iter().enumerate() {
+        if !page_needs_ssr(page, &ssr_tags) {
+            results[index] = Some(page.clone());
+            continue;
+        }
 
-            if !source_changed && !ssr_needs_rerun(&source_cache_path, &file_path, &ssr_script)? {
-                let cached_html = std::fs::read_to_string(&file_path)?;
-                return Ok(RenderedPage {
-                    url_path: page.url_path.clone(),
-                    output_path: page.output_path.clone(),
-                    html: cached_html,
-                });
-            }
+        let file_path = output_dir.join(&page.output_path);
+        let source_cache_path = ssr_source_cache_path(&ctx.site_root, &page.output_path);
+        let source_changed = write_file_if_changed(&source_cache_path, page.html.as_bytes())?;
 
-            write_file_if_changed(&file_path, page.html.as_bytes())?;
-            let updated_html = run_puppeteer_ssr(
-                &source_cache_path,
-                output_dir,
-                &page.url_path,
-                &ctx.config.build.ssr.node_bin,
-                &ssr_script,
-                ctx.config.build.ssr.timeout_ms,
-            )?;
-            Ok(RenderedPage {
+        if !source_changed && !ssr_needs_rerun(&source_cache_path, &file_path, &ssr_script)? {
+            let cached_html = std::fs::read_to_string(&file_path)?;
+            results[index] = Some(RenderedPage {
                 url_path: page.url_path.clone(),
                 output_path: page.output_path.clone(),
-                html: updated_html,
-            })
-        })
-        .collect::<SiteResult<Vec<_>>>()
+                html: cached_html,
+            });
+            continue;
+        }
+
+        write_file_if_changed(&file_path, page.html.as_bytes())?;
+        jobs.push(PendingSsrJob {
+            index,
+            url_path: page.url_path.clone(),
+            output_path: page.output_path.clone(),
+            file_path,
+            source_cache_path,
+        });
+    }
+
+    if !jobs.is_empty() {
+        run_puppeteer_ssr_batch(
+            &ctx.site_root,
+            output_dir,
+            &ctx.config.build.ssr.node_bin,
+            &ssr_script,
+            ctx.config.build.ssr.timeout_ms,
+            ctx.config.build.ssr.concurrency.max(1),
+            &jobs,
+        )?;
+
+        for job in jobs {
+            let html = std::fs::read_to_string(&job.file_path)?;
+            results[job.index] = Some(RenderedPage {
+                url_path: job.url_path,
+                output_path: job.output_path,
+                html,
+            });
+        }
+    }
+
+    results
+        .into_iter()
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| SiteError::Ssr("SSR pass did not produce output for every page.".into()))
+}
+
+fn page_needs_ssr(page: &RenderedPage, ssr_tags: &[&str]) -> bool {
+    ssr_tags.iter().any(|tag| {
+        let open_tag = format!("<{}", tag);
+        page.html.contains(&open_tag)
+    })
 }
 
 fn ssr_source_cache_path(site_root: &Path, output_path: &Path) -> PathBuf {
@@ -580,6 +627,10 @@ fn ssr_source_cache_path(site_root: &Path, output_path: &Path) -> PathBuf {
         .join(".ferrosite-cache")
         .join("ssr-source")
         .join(output_path)
+}
+
+fn ssr_batch_manifest_path(site_root: &Path) -> PathBuf {
+    site_root.join(".ferrosite-cache").join("ssr-batch.json")
 }
 
 fn metadata_modified(path: &Path) -> SiteResult<Option<SystemTime>> {
@@ -620,37 +671,49 @@ fn find_ssr_script(site_root: &Path) -> SiteResult<PathBuf> {
     })
 }
 
-fn run_puppeteer_ssr(
-    html_file: &Path,
+fn run_puppeteer_ssr_batch(
+    site_root: &Path,
     output_dir: &Path,
-    route_path: &str,
     node_bin: &str,
     ssr_script: &Path,
     timeout_ms: u32,
-) -> SiteResult<String> {
+    concurrency: usize,
+    jobs: &[PendingSsrJob],
+) -> SiteResult<()> {
+    let manifest_path = ssr_batch_manifest_path(site_root);
+    if let Some(parent) = manifest_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let manifest = serde_json::json!({
+        "rootDir": output_dir.to_string_lossy(),
+        "timeoutMs": timeout_ms,
+        "concurrency": concurrency,
+        "jobs": jobs.iter().map(|job| serde_json::json!({
+            "htmlPath": job.source_cache_path.to_string_lossy(),
+            "routePath": job.url_path,
+            "outputPath": job.file_path.to_string_lossy(),
+        })).collect::<Vec<_>>(),
+    });
+    std::fs::write(&manifest_path, serde_json::to_vec_pretty(&manifest)?)?;
+
     let output = std::process::Command::new(node_bin)
         .arg(ssr_script)
-        .arg(html_file)
-        .arg("--root")
-        .arg(output_dir)
-        .arg("--route")
-        .arg(route_path)
-        .arg("--timeout")
-        .arg(timeout_ms.to_string())
+        .arg("--manifest")
+        .arg(&manifest_path)
         .output()
         .map_err(|e| SiteError::Ssr(format!("Failed to run node: {}", e)))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(SiteError::Ssr(format!(
-            "Puppeteer SSR failed for {}: {}",
-            html_file.display(),
+            "Puppeteer SSR batch failed for {} page(s): {}",
+            jobs.len(),
             stderr
         )));
     }
 
-    String::from_utf8(output.stdout)
-        .map_err(|e| SiteError::Ssr(format!("SSR output not valid UTF-8: {}", e)))
+    Ok(())
 }
 
 // ── Full Build Pipeline ────────────────────────────────────────────────────────
@@ -931,11 +994,14 @@ url = "/template/"
             html: "<html>hello</html>".into(),
         };
 
-        write_output(&[RenderedPage {
-            url_path: page.url_path.clone(),
-            output_path: page.output_path.clone(),
-            html: page.html.clone(),
-        }], &output_dir)
+        write_output(
+            &[RenderedPage {
+                url_path: page.url_path.clone(),
+                output_path: page.output_path.clone(),
+                html: page.html.clone(),
+            }],
+            &output_dir,
+        )
         .expect("first write");
 
         let file_path = output_dir.join(&page.output_path);
@@ -960,13 +1026,17 @@ url = "/template/"
     fn ssr_needs_rerun_only_when_source_or_script_is_newer() {
         let temp = tempfile::tempdir().expect("tempdir");
         let root = temp.path();
-        let source = root.join(".ferrosite-cache").join("ssr-source").join("index.html");
+        let source = root
+            .join(".ferrosite-cache")
+            .join("ssr-source")
+            .join("index.html");
         let output = root.join("dist").join("index.html");
         let script = root.join("ssr").join("render.mjs");
 
         write_file_if_changed(&source, b"<html>source</html>").expect("write source");
         std::thread::sleep(std::time::Duration::from_millis(1100));
         write_file_if_changed(&output, b"<html>ssr</html>").expect("write output");
+        std::thread::sleep(std::time::Duration::from_millis(1100));
         write_file_if_changed(&script, b"console.log('ssr');").expect("write script");
 
         assert!(ssr_needs_rerun(&source, &output, &script).expect("freshness"));
@@ -980,5 +1050,33 @@ url = "/template/"
         write_file_if_changed(&source, b"<html>source changed</html>").expect("rewrite source");
 
         assert!(ssr_needs_rerun(&source, &output, &script).expect("freshness"));
+    }
+
+    #[test]
+    fn page_needs_ssr_matches_known_custom_elements() {
+        let page = RenderedPage {
+            url_path: "/projects/".into(),
+            output_path: PathBuf::from("projects/index.html"),
+            html: r#"<main><dev-project-grid projects="[]"></dev-project-grid></main>"#.into(),
+        };
+
+        assert!(page_needs_ssr(
+            &page,
+            &["dev-project-card", "dev-project-grid"]
+        ));
+    }
+
+    #[test]
+    fn page_needs_ssr_skips_plain_html_pages() {
+        let page = RenderedPage {
+            url_path: "/about/".into(),
+            output_path: PathBuf::from("about/index.html"),
+            html: "<main><h1>About</h1><p>Plain HTML.</p></main>".into(),
+        };
+
+        assert!(!page_needs_ssr(
+            &page,
+            &["dev-project-card", "dev-project-grid"]
+        ));
     }
 }
