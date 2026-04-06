@@ -20,7 +20,6 @@ templates/<template-name>/
 ├── components/       # optional pfusch .js components
 ├── content/          # bundled starter markdown content
 ├── layouts/          # required minijinja html layouts
-├── plugins/          # optional bundled plugins copied into new sites
 ├── theme.toml        # optional theme token file
 └── ferrosite.toml    # optional starter site config used by `ferrosite new`
 ```
@@ -206,11 +205,26 @@ Notes:
 
 ### Bundled plugins
 
-Put plugins in `plugins/<plugin-name>/` when a template should scaffold a site
-with dynamic features already present.
+Templates do not need to carry their own copy of Ferrosite's built-in plugins.
+Instead, enable shared plugins in the template's `ferrosite.toml`:
 
-This works because `ferrosite new` copies the template's `plugins/` folder into
-the new site root, and plugin loading happens from the site root.
+```toml
+[plugins]
+enabled = ["contact-form"]
+```
+
+At build/runtime, Ferrosite resolves plugins from:
+
+1. the site's own `plugins/` directory
+2. Ferrosite's bundled `plugins/` directory
+
+That means a built-in template can reference `contact-form` without shipping a
+duplicate plugin directory inside the template.
+
+If you need a template-specific custom plugin that Ferrosite does not bundle,
+ship it as a site-level plugin in the scaffolded project or install it via
+`ferrosite plugin add <git-url>`. Template authors should treat shared bundled
+plugins as references, not copied assets.
 
 Good use cases:
 
@@ -226,7 +240,7 @@ Good use cases:
 3. Add `theme.toml` and an `assets/main.css`.
 4. Add starter markdown content under `content/`.
 5. Add `ferrosite.toml` with `build.template = "<name>"`.
-6. If needed, add bundled plugins under `plugins/`.
+6. If needed, enable shared plugins in `ferrosite.toml`.
 7. Scaffold a disposable site with `ferrosite new tmp-site --template <name>`.
 8. Run `ferrosite build` inside that disposable site.
 9. Open the generated HTML and verify slot usage, missing assets, and nav/footer
@@ -254,5 +268,6 @@ cd tmp-site
 cargo run -- build
 ```
 
-If the template includes plugins, this scaffold-and-build flow is the best
-verification because it exercises the same copy path real users depend on.
+If the template enables plugins, this scaffold-and-build flow is still the best
+verification because it exercises the same plugin resolution path real users
+depend on.

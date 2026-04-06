@@ -13,7 +13,7 @@ use crate::config::{load_site_config_for_root, template_dir};
 use crate::deploy::generate_cloudflare_worker;
 use crate::error::{io_with_path, SiteError, SiteResult};
 use crate::pipeline::build::{build_site, BuildContext, BuildReport};
-use crate::plugin::Plugin;
+use crate::plugin::{bundled_plugins_dir, site_plugins_dir, Plugin};
 use crate::url::decode_url_path;
 
 const LOCAL_RUNNER_SCRIPT: &str = r#"import { Buffer } from "node:buffer";
@@ -315,13 +315,11 @@ fn watched_roots(site_root: &Path) -> Vec<PathBuf> {
         roots.push(site_root.join(&config.build.content_dir));
         roots.push(site_root.join(&config.build.assets_dir));
 
-        let plugins_dir = config
-            .plugins
-            .plugins_dir
-            .as_deref()
-            .map(|dir| site_root.join(dir))
-            .unwrap_or_else(|| site_root.join("plugins"));
-        roots.push(plugins_dir);
+        roots.push(site_plugins_dir(
+            site_root,
+            config.plugins.plugins_dir.as_deref(),
+        ));
+        roots.push(bundled_plugins_dir());
         roots.push(template_dir(site_root, &config.build.template));
     }
 

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 use crate::content::slot::SlotType;
 use crate::error::{SiteError, SiteResult};
@@ -15,33 +15,49 @@ pub struct PluginRegistry {
 
 impl PluginRegistry {
     pub fn load_from_dir(plugins_dir: &Path, enabled: &[String]) -> SiteResult<Self> {
-        if !plugins_dir.exists() {
-            return Ok(Self::default());
-        }
+        Self::load_from_dirs(&[plugins_dir.to_path_buf()], enabled)
+    }
 
-        let plugins: Vec<SiteResult<(Plugin, String)>> = std::fs::read_dir(plugins_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|e| e.path().is_dir())
-            .map(|entry| {
-                let dir_name = entry.file_name().to_string_lossy().into_owned();
-                Plugin::from_dir(&entry.path()).map(|plugin| (plugin, dir_name))
-            })
-            .collect();
-
+    pub fn load_from_dirs(plugin_dirs: &[PathBuf], enabled: &[String]) -> SiteResult<Self> {
         let mut loaded = Vec::new();
         let mut errors = Vec::new();
+        let mut seen_manifest_names = HashSet::new();
+        let mut seen_dir_names = HashSet::new();
 
-        for result in plugins {
-            match result {
-                Ok((plugin, dir_name)) => {
-                    if enabled.is_empty()
-                        || enabled.contains(&plugin.manifest.name)
-                        || enabled.contains(&dir_name)
-                    {
-                        loaded.push(plugin);
+        for plugins_dir in plugin_dirs {
+            if !plugins_dir.exists() {
+                continue;
+            }
+
+            let plugins: Vec<SiteResult<(Plugin, String)>> = std::fs::read_dir(plugins_dir)?
+                .filter_map(|entry| entry.ok())
+                .filter(|e| e.path().is_dir())
+                .map(|entry| {
+                    let dir_name = entry.file_name().to_string_lossy().into_owned();
+                    Plugin::from_dir(&entry.path()).map(|plugin| (plugin, dir_name))
+                })
+                .collect();
+
+            for result in plugins {
+                match result {
+                    Ok((plugin, dir_name)) => {
+                        if seen_manifest_names.contains(&plugin.manifest.name)
+                            || seen_dir_names.contains(&dir_name)
+                        {
+                            continue;
+                        }
+
+                        if enabled.is_empty()
+                            || enabled.contains(&plugin.manifest.name)
+                            || enabled.contains(&dir_name)
+                        {
+                            seen_manifest_names.insert(plugin.manifest.name.clone());
+                            seen_dir_names.insert(dir_name);
+                            loaded.push(plugin);
+                        }
                     }
+                    Err(error) => errors.push(error),
                 }
-                Err(error) => errors.push(error),
             }
         }
 
@@ -137,5 +153,48 @@ worker_route = "/api/example"
             .expect("registry should load");
 
         assert_eq!(registry.len(), 1);
+    }
+
+    #[test]
+    fn load_from_dirs_prefers_site_local_plugin_over_bundled_duplicate() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let site_plugins = temp.path().join("site-plugins");
+        let bundled_plugins = temp.path().join("bundled-plugins");
+
+        let write_plugin = |root: &Path, dir_name: &str, component_body: &str| {
+            let plugin_dir = root.join(dir_name);
+            std::fs::create_dir_all(&plugin_dir).expect("plugin dir");
+            std::fs::write(
+                plugin_dir.join("manifest.toml"),
+                r#"[plugin]
+name = "contact-form"
+version = "1.0.0"
+author = "Example"
+slots = ["contact-form"]
+component_file = "component.js"
+worker_file = "worker.js"
+worker_route = "/api/contact"
+"#,
+            )
+            .expect("manifest");
+            std::fs::write(plugin_dir.join("component.js"), component_body).expect("component");
+            std::fs::write(plugin_dir.join("worker.js"), "export default {};").expect("worker");
+        };
+
+        write_plugin(&site_plugins, "contact-form", "customElements.define('site-form', class {});");
+        write_plugin(
+            &bundled_plugins,
+            "contact-form",
+            "customElements.define('bundled-form', class {});",
+        );
+
+        let registry = PluginRegistry::load_from_dirs(
+            &[site_plugins, bundled_plugins],
+            &["contact-form".to_string()],
+        )
+        .expect("registry should load");
+
+        assert_eq!(registry.len(), 1);
+        assert!(registry.component_defs()[0].source.contains("site-form"));
     }
 }

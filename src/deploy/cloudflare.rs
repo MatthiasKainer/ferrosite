@@ -94,7 +94,15 @@ impl Deployer for CloudflareDeployer {
             std::fs::write(&worker_file, generate_cloudflare_worker(plugin))?;
             std::fs::write(
                 &worker_config,
-                generate_worker_wrangler_toml(&worker_name, worker_file.file_name().and_then(|name| name.to_str()).unwrap_or("worker.js")),
+                generate_worker_wrangler_toml(
+                    &worker_name,
+                    worker_file
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("worker.js"),
+                    self.config.domain.as_deref(),
+                    &plugin.manifest.worker_route,
+                ),
             )?;
 
             println!("  Deploying worker: {}", worker_name);
@@ -302,14 +310,54 @@ ENVIRONMENT = "production"
     )
 }
 
-fn generate_worker_wrangler_toml(worker_name: &str, worker_entrypoint: &str) -> String {
-    format!(
+fn generate_worker_wrangler_toml(
+    worker_name: &str,
+    worker_entrypoint: &str,
+    domain: Option<&str>,
+    worker_route: &str,
+) -> String {
+    let mut config = format!(
         r#"name = "{worker_name}"
 main = "{worker_entrypoint}"
 compatibility_date = "2024-01-01"
+keep_vars = true
 workers_dev = true
 "#,
-    )
+    );
+
+    if let Some((zone_name, route_pattern)) = cloudflare_route(domain, worker_route) {
+        config.push_str("\n[route]\n");
+        config.push_str(&format!("pattern = \"{route_pattern}\"\n"));
+        config.push_str(&format!("zone_name = \"{zone_name}\"\n"));
+    }
+
+    config
+}
+
+fn cloudflare_route(domain: Option<&str>, worker_route: &str) -> Option<(String, String)> {
+    let host = domain?
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_end_matches('/')
+        .trim();
+
+    if host.is_empty() {
+        return None;
+    }
+
+    let route = worker_route.trim();
+    if route.is_empty() || route == "/" {
+        return Some((host.to_string(), format!("{host}/*")));
+    }
+
+    let normalized_route = if route.starts_with('/') {
+        route.to_string()
+    } else {
+        format!("/{route}")
+    };
+
+    Some((host.to_string(), format!("{host}{normalized_route}*")))
 }
 
 #[cfg(test)]
@@ -369,11 +417,31 @@ mod tests {
 
     #[test]
     fn worker_wrangler_config_uses_worker_fields_only() {
-        let output = generate_worker_wrangler_toml("contact-form-worker", "contact-form.worker.js");
+        let output = generate_worker_wrangler_toml(
+            "contact-form-worker",
+            "contact-form.worker.js",
+            None,
+            "/api/contact",
+        );
 
         assert!(output.contains("name = \"contact-form-worker\""));
         assert!(output.contains("main = \"contact-form.worker.js\""));
+        assert!(output.contains("keep_vars = true"));
         assert!(output.contains("workers_dev = true"));
         assert!(!output.contains("pages_build_output_dir"));
+    }
+
+    #[test]
+    fn worker_wrangler_config_adds_route_when_domain_is_configured() {
+        let output = generate_worker_wrangler_toml(
+            "contact-form-worker",
+            "contact-form.worker.js",
+            Some("https://matthias-kainer.de/"),
+            "/api/contact",
+        );
+
+        assert!(output.contains("[route]"));
+        assert!(output.contains("pattern = \"matthias-kainer.de/api/contact*\""));
+        assert!(output.contains("zone_name = \"matthias-kainer.de\""));
     }
 }

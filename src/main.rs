@@ -1459,8 +1459,15 @@ fn cmd_plugin_add(root: &Path, source: &str) -> SiteResult<()> {
 fn cmd_plugin_remove(root: &Path, plugin: &str) -> SiteResult<()> {
     let outcome = uninstall_plugin(root, plugin)?;
 
-    println!("🗑️  Removed plugin '{}'", outcome.plugin_name);
-    println!("   Path: {}", outcome.removed_dir.display());
+    if outcome.disabled_only {
+        println!("🗑️  Disabled bundled plugin '{}'", outcome.plugin_name);
+    } else {
+        println!("🗑️  Removed plugin '{}'", outcome.plugin_name);
+    }
+
+    if let Some(removed_dir) = &outcome.removed_dir {
+        println!("   Path: {}", removed_dir.display());
+    }
 
     if outcome.usage_files.is_empty() {
         println!("   No remaining usage references found.");

@@ -75,23 +75,22 @@ pfusch("ferrosite-contact-form", {
     }
   `,
 
-  // ── Success state ──────────────────────────────────────────────────
+  // Success state
   state.status === "success"
     ? html.div({ class: "alert alert-success" },
-        "✓ Message sent! I'll get back to you within a day or two.")
+        "Message sent! I'll get back to you within a day or two.")
     : null,
 
-  // ── Error state ────────────────────────────────────────────────────
+  // Error state
   state.status === "error"
     ? html.div({ class: "alert alert-error" },
-        `✗ ${state.errorMsg || "Something went wrong. Please try again or email directly."}`)
+        `${state.errorMsg || "Something went wrong. Please try again or email directly."}`)
     : null,
 
-  // ── Form (always rendered for progressive enhancement) ─────────────
+  // Form (always rendered for progressive enhancement)
   state.status !== "success"
     ? html.form({
         class: "form",
-        // Intercept submit for CQRS dispatch
         submit: async (e) => {
           e.preventDefault();
           if (state.status === "sending") return;
@@ -139,18 +138,17 @@ pfusch("ferrosite-contact-form", {
       html.div({ class: "field" },
         html.label({ for: "cf-subject" }, "Subject (optional)"),
         html.input({ type: "text", id: "cf-subject", name: "subject",
-          placeholder: "Project inquiry, collaboration, …",
+          placeholder: "Project inquiry, collaboration, ...",
           disabled: state.status === "sending" }),
       ),
 
       html.div({ class: "field" },
         html.label({ for: "cf-message" }, "Message"),
         html.textarea({ id: "cf-message", name: "message",
-          required: true, rows: 6, placeholder: "Tell me about your project…",
+          required: true, rows: 6, placeholder: "Tell me about your project...",
           disabled: state.status === "sending" }),
       ),
 
-      // Honeypot — bots fill this, humans don't see it
       html.input({ type: "text", name: "_hp", style: "display:none",
         autocomplete: "off", tabindex: "-1" }),
 
@@ -160,8 +158,8 @@ pfusch("ferrosite-contact-form", {
         disabled: state.status === "sending",
       },
         state.status === "sending"
-          ? [html.div({ class: "spinner" }), "Sending…"]
-          : "Send Message →"
+          ? [html.div({ class: "spinner" }), "Sending..."]
+          : "Send Message"
       ),
     )
     : null,

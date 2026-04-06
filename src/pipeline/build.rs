@@ -12,7 +12,7 @@ use crate::content::page::{Page, PageCollection, PageType, SlotMap};
 use crate::content::slot::SlotType;
 use crate::error::{SiteError, SiteResult};
 use crate::pipeline::media::{prepare_media_plan, write_media_assets};
-use crate::plugin::PluginRegistry;
+use crate::plugin::{plugin_search_dirs, PluginRegistry};
 use crate::template::{ComponentRegistry, TemplateEngine};
 
 const PFUSCH_CDN: &str = "https://cdn.jsdelivr.net/gh/MatthiasKainer/pfusch@main/pfusch.js";
@@ -42,14 +42,8 @@ impl BuildContext {
         let components_dir = tmpl_dir.join("components");
         let components = ComponentRegistry::load_from_dir(&components_dir, PFUSCH_CDN)?;
 
-        let plugins_dir = config
-            .plugins
-            .plugins_dir
-            .as_deref()
-            .map(|d| site_root.join(d))
-            .unwrap_or_else(|| site_root.join("plugins"));
-
-        let plugins = PluginRegistry::load_from_dir(&plugins_dir, &config.plugins.enabled)?;
+        let plugin_dirs = plugin_search_dirs(site_root, config.plugins.plugins_dir.as_deref());
+        let plugins = PluginRegistry::load_from_dirs(&plugin_dirs, &config.plugins.enabled)?;
         plugins.validate_no_conflicts()?;
 
         let components = components.with_plugin_components(plugins.component_defs());

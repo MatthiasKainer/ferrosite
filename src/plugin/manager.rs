@@ -9,7 +9,7 @@ use walkdir::WalkDir;
 use crate::config::load_site_config_for_root;
 use crate::error::{SiteError, SiteResult};
 
-use super::Plugin;
+use super::{bundled_plugins_dir, site_plugins_dir, Plugin};
 
 #[derive(Debug, Clone)]
 pub struct PluginInstallOutcome {
@@ -22,7 +22,8 @@ pub struct PluginInstallOutcome {
 #[derive(Debug, Clone)]
 pub struct PluginUninstallOutcome {
     pub plugin_name: String,
-    pub removed_dir: PathBuf,
+    pub removed_dir: Option<PathBuf>,
+    pub disabled_only: bool,
     pub usage_files: Vec<PathBuf>,
 }
 
@@ -40,9 +41,9 @@ struct PluginDirConfig {
 
 pub fn install_plugin(site_root: &Path, source: &str) -> SiteResult<PluginInstallOutcome> {
     let plugin_dir_config = resolve_plugin_dir(site_root)?;
-    std::fs::create_dir_all(&plugin_dir_config.dir)?;
 
     let staged = if is_git_source(source) {
+        std::fs::create_dir_all(&plugin_dir_config.dir)?;
         let temp = TempDir::new()?;
         let checkout_dir = temp.path().join("plugin");
         clone_plugin_repo(source, &checkout_dir)?;
@@ -79,6 +80,21 @@ pub fn install_plugin(site_root: &Path, source: &str) -> SiteResult<PluginInstal
         });
     }
 
+    if !is_git_source(source) {
+        persist_plugin_enabled(
+            site_root,
+            &staged.plugin.manifest.name,
+            plugin_dir_config.configured_value.as_deref(),
+        )?;
+
+        return Ok(PluginInstallOutcome {
+            plugin_name: staged.plugin.manifest.name,
+            install_dir: staged.source_dir,
+            already_installed: false,
+            source: staged.source,
+        });
+    }
+
     let install_dir = plugin_dir_config.dir.join(&staged.plugin.manifest.name);
     copy_dir_recursive(&staged.source_dir, &install_dir)?;
     persist_plugin_enabled(
@@ -97,35 +113,55 @@ pub fn install_plugin(site_root: &Path, source: &str) -> SiteResult<PluginInstal
 
 pub fn uninstall_plugin(site_root: &Path, plugin_ref: &str) -> SiteResult<PluginUninstallOutcome> {
     let plugin_dir_config = resolve_plugin_dir(site_root)?;
-    let installed =
-        find_installed_plugin(&plugin_dir_config.dir, plugin_ref)?.ok_or_else(|| {
-            SiteError::Plugin {
-                plugin: plugin_ref.to_string(),
-                message: format!(
-                    "Plugin '{}' is not installed in '{}'.",
-                    plugin_ref,
-                    plugin_dir_config.dir.display()
-                ),
-            }
-        })?;
+    if let Some(installed) = find_installed_plugin(&plugin_dir_config.dir, plugin_ref)? {
+        let usage_files = find_plugin_usage_files(
+            site_root,
+            &installed.plugin,
+            &installed.dir_name,
+            &plugin_dir_config.dir,
+        )?;
+
+        persist_plugin_disabled(
+            site_root,
+            &installed.plugin.manifest.name,
+            &installed.dir_name,
+        )?;
+        std::fs::remove_dir_all(&installed.plugin.dir)?;
+
+        return Ok(PluginUninstallOutcome {
+            plugin_name: installed.plugin.manifest.name,
+            removed_dir: Some(installed.plugin.dir),
+            disabled_only: false,
+            usage_files,
+        });
+    }
+
+    let bundled = find_bundled_plugin(plugin_ref)?.ok_or_else(|| SiteError::Plugin {
+        plugin: plugin_ref.to_string(),
+        message: format!(
+            "Plugin '{}' is not available in '{}' or bundled ferrosite plugins.",
+            plugin_ref,
+            plugin_dir_config.dir.display()
+        ),
+    })?;
 
     let usage_files = find_plugin_usage_files(
         site_root,
-        &installed.plugin,
-        &installed.dir_name,
+        &bundled.plugin,
+        &bundled.dir_name,
         &plugin_dir_config.dir,
     )?;
 
     persist_plugin_disabled(
         site_root,
-        &installed.plugin.manifest.name,
-        &installed.dir_name,
+        &bundled.plugin.manifest.name,
+        &bundled.dir_name,
     )?;
-    std::fs::remove_dir_all(&installed.plugin.dir)?;
 
     Ok(PluginUninstallOutcome {
-        plugin_name: installed.plugin.manifest.name,
-        removed_dir: installed.plugin.dir,
+        plugin_name: bundled.plugin.manifest.name,
+        removed_dir: None,
+        disabled_only: true,
         usage_files,
     })
 }
@@ -140,12 +176,7 @@ struct StagedPlugin {
 fn resolve_plugin_dir(site_root: &Path) -> SiteResult<PluginDirConfig> {
     let config = load_site_config_for_root(site_root)?;
     Ok(PluginDirConfig {
-        dir: config
-            .plugins
-            .plugins_dir
-            .as_deref()
-            .map(|dir| site_root.join(dir))
-            .unwrap_or_else(|| site_root.join("plugins")),
+        dir: site_plugins_dir(site_root, config.plugins.plugins_dir.as_deref()),
         configured_value: config.plugins.plugins_dir,
     })
 }
@@ -183,32 +214,27 @@ fn is_git_source(source: &str) -> bool {
 }
 
 fn find_bundled_plugin_dir(name: &str) -> SiteResult<PathBuf> {
-    let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
+    let plugins_dir = bundled_plugins_dir();
     let mut available = Vec::new();
 
-    for entry in std::fs::read_dir(&templates_dir)? {
+    if !plugins_dir.exists() {
+        return Err(SiteError::Plugin {
+            plugin: name.to_string(),
+            message: "No bundled plugins are available.".to_string(),
+        });
+    }
+
+    for entry in std::fs::read_dir(&plugins_dir)? {
         let entry = entry?;
         if !entry.path().is_dir() {
             continue;
         }
 
-        let plugins_dir = entry.path().join("plugins");
-        if !plugins_dir.exists() {
-            continue;
-        }
+        let plugin_name = entry.file_name().to_string_lossy().into_owned();
+        available.push(plugin_name.clone());
 
-        for plugin_entry in std::fs::read_dir(&plugins_dir)? {
-            let plugin_entry = plugin_entry?;
-            if !plugin_entry.path().is_dir() {
-                continue;
-            }
-
-            let plugin_name = plugin_entry.file_name().to_string_lossy().into_owned();
-            available.push(plugin_name.clone());
-
-            if plugin_name == name && plugin_entry.path().join("manifest.toml").exists() {
-                return Ok(plugin_entry.path());
-            }
+        if plugin_name == name && entry.path().join("manifest.toml").exists() {
+            return Ok(entry.path());
         }
     }
 
@@ -227,6 +253,10 @@ fn find_bundled_plugin_dir(name: &str) -> SiteResult<PathBuf> {
             )
         },
     })
+}
+
+fn find_bundled_plugin(plugin_ref: &str) -> SiteResult<Option<InstalledPlugin>> {
+    find_installed_plugin(&bundled_plugins_dir(), plugin_ref)
 }
 
 fn find_installed_plugin(
@@ -507,7 +537,8 @@ account_id = "abc123"
 
         assert_eq!(result.plugin_name, "contact-form");
         assert!(!result.already_installed);
-        assert!(root.join("plugins/contact-form/manifest.toml").exists());
+        assert!(!root.join("plugins/contact-form/manifest.toml").exists());
+        assert!(result.install_dir.ends_with("plugins/contact-form"));
 
         let config = std::fs::read_to_string(root.join("ferrosite.toml")).expect("updated config");
         let value: toml::Value = toml::from_str(&config).expect("valid toml");
@@ -534,7 +565,8 @@ account_id = "abc123"
         let result = uninstall_plugin(root, "contact-form").expect("plugin uninstall");
 
         assert_eq!(result.plugin_name, "contact-form");
-        assert!(!root.join("plugins/contact-form").exists());
+        assert!(result.disabled_only);
+        assert!(result.removed_dir.is_none());
         assert_eq!(result.usage_files, vec![PathBuf::from("content/about.md")]);
 
         let config = std::fs::read_to_string(root.join("ferrosite.toml")).expect("updated config");

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::config::{load_site_config_for_root, DeployProvider, SiteConfig};
 use crate::error::{SiteError, SiteResult};
-use crate::plugin::{Plugin, PluginRegistry};
+use crate::plugin::{plugin_search_dirs, Plugin, PluginRegistry};
 
 mod aws;
 mod azure;
@@ -73,8 +73,8 @@ pub fn deploy_site(site_root: &Path) -> SiteResult<DeployResult> {
     let deployer = make_deployer(&config)?;
     println!("🚀 Deploying with {}…", deployer.provider_name());
 
-    let plugins_dir = site_root.join("plugins");
-    let plugins = PluginRegistry::load_from_dir(&plugins_dir, &config.plugins.enabled)?;
+    let plugin_dirs = plugin_search_dirs(site_root, config.plugins.plugins_dir.as_deref());
+    let plugins = PluginRegistry::load_from_dirs(&plugin_dirs, &config.plugins.enabled)?;
 
     let result = deployer.deploy_static(&dist_dir)?;
     deployer.deploy_workers(&dist_dir, &plugins)?;

@@ -155,16 +155,20 @@ The important edit points are:
 - `templates/<active-template>/layouts/` → page HTML layouts
 - `templates/<active-template>/theme.toml` → theme tokens exposed as CSS vars
 - `templates/<active-template>/components/` → pfusch custom elements loaded on pages
-- `plugins/` → dynamic plugin workers and components
+- `plugins/` → site-local plugin overrides and custom/git-installed plugins
 - `assets/` → static images, fonts, CSS, downloads, extra files
 
 Important rule:
 
 - site-local `templates/<active-template>/...` is checked first
 - bundled crate templates are only used as a fallback
+- site-local `plugins/...` is checked first
+- bundled Ferrosite plugins are used as the fallback
 
 That means you can start from a bundled template and override only the files you
-need in your site.
+need in your site. The same now applies to plugins: built-in templates can just
+enable a shared plugin in `ferrosite.toml`, and your site only needs a local
+`plugins/<name>/` directory if you want to override or add one.
 
 ---
 

@@ -2,6 +2,7 @@
 // Implements CQRS handlers: handleCommand + handleQuery
 // Deployed as a sandboxed lambda via wrangler
 
+// Command handler
 async function handleCommand(command, payload, env, ctx) {
   switch (command) {
     case "SendMessage":
@@ -11,6 +12,7 @@ async function handleCommand(command, payload, env, ctx) {
   }
 }
 
+// Query handler
 async function handleQuery(query, params, env, ctx) {
   switch (query) {
     case "GetStatus":
@@ -20,6 +22,7 @@ async function handleQuery(query, params, env, ctx) {
   }
 }
 
+// Email delivery via Resend
 async function sendContactEmail(payload, env) {
   const { name, email, subject, message } = payload;
 

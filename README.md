@@ -60,8 +60,8 @@ my-site/
 │   ├── projects/           # Project details (slot: project-body)
 │   └── skills/             # Skill groups (slot: skill-group)
 ├── assets/                 # Static assets (images, fonts, extra CSS)
-├── plugins/                # Dynamic plugins (lambdas + web components)
-│   └── contact-form/
+├── plugins/                # Optional site-local plugins or overrides
+│   └── my-custom-plugin/
 │       ├── manifest.toml
 │       ├── component.js    # pfusch component
 │       └── worker.js       # Cloudflare Worker / Lambda handler
@@ -76,6 +76,7 @@ my-site/
 Local markdown images are collected during the build, rewritten to `/static/media/...`, and emitted as optimized files in `dist/static/media/`.
 
 Bundled templates currently include `developer` and `company`.
+Bundled plugins currently live in Ferrosite itself under `ferrosite/plugins/` and are loaded automatically when enabled in `ferrosite.toml`.
 
 - To build your own template, see [`templates/HOWTO-CREATE-A-TEMPLATE.md`](templates/HOWTO-CREATE-A-TEMPLATE.md).
 - To edit, build, and operate a site built from a template, see [`HOWTO-BUILD-EDIT-OPERATE-YOUR-SITE.md`](HOWTO-BUILD-EDIT-OPERATE-YOUR-SITE.md).
@@ -213,6 +214,13 @@ Plugins bring their own pfusch web component *and* a lambda worker. The worker i
 The build system generates a CQRS wrapper around your worker code automatically.
 For local end-to-end testing, `ferrosite run` serves the static site and dispatches plugin routes through a local worker runner.
 
+Plugin resolution order is:
+
+1. site-local plugins from `./plugins/`
+2. bundled Ferrosite plugins from `ferrosite/plugins/`
+
+If both provide the same plugin name, the site-local plugin wins. This lets templates enable shared plugins without copying them into every scaffolded site, while still allowing per-site overrides.
+
 ```toml
 # plugins/contact-form/manifest.toml
 [plugin]
@@ -245,18 +253,18 @@ There is currently no dedicated `ferrosite plugin update` command.
 To update an existing plugin:
 
 1. identify how it was installed
-    - bundled plugin copied into your site's `plugins/` folder
+    - bundled Ferrosite plugin enabled via `plugins.enabled`
     - git-based plugin cloned into your site's `plugins/` folder
     - custom/local plugin you maintain directly in `plugins/`
-2. update the files in `plugins/<plugin-name>/`
-    - for a git-based plugin: run `git pull` inside that plugin directory
-    - for a bundled plugin: either copy changes in manually, or run `ferrosite plugin remove <name>` followed by `ferrosite plugin add <name>`
-    - for a local/custom plugin: edit `manifest.toml`, `component.js`, and `worker.js` directly
+2. apply the matching update path
+    - for a git-based plugin: run `git pull` inside `plugins/<plugin-name>/`
+    - for a bundled plugin: update Ferrosite itself, then rebuild or reinstall the binary
+    - for a local/custom plugin: edit `plugins/<plugin-name>/manifest.toml`, `plugins/<plugin-name>/component.js`, and `plugins/<plugin-name>/worker.js`
 3. verify `plugins.enabled` in `ferrosite.toml` still contains the plugin name
 4. run `ferrosite run` to test the worker route and UI together
 5. rebuild or redeploy once the updated plugin works as expected
 
-For bundled plugins, `plugin remove` prints files that still reference the plugin so you can update layouts, slots, or content before re-installing or replacing it.
+For bundled plugins, `plugin remove` disables the plugin in config and prints files that still reference it. For site-local plugins, it removes the plugin directory and prints the same reference list.
 
 ---
 
