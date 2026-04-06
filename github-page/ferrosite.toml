@@ -30,9 +30,9 @@ enabled = []
 plugins_dir = "plugins"
 
 [site]
-base_url = "https://example.com"
-description = "My personal site"
-favicon = "/assets/favicon.svg"
+base_url = "https://matthiaskainer.github.io/ferrosite/"
+description = "Yet another cms"
+favicon = "assets/favicon.svg"
 keywords = [
     "rust",
     "static site generator",
@@ -50,6 +50,5 @@ email = "hello@matthias-kainer.de"
 name = "Your Name"
 
 [site.social]
-github = "https://github.com/yourname"
-linkedin = "https://linkedin.com/in/yourname"
+github = "https://github.com/matthiaskainer/ferrosite"
 website = "https://matthiaskainer.github.io/ferrosite"
