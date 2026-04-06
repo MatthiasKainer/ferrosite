@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — Your Name</title>
+  <meta name="description" content="Get in touch with Your Name">
+  
+  <meta name="keywords" content="rust{&quot;sep&quot;: &quot;, &quot;}static site generator{&quot;sep&quot;: &quot;, &quot;}github pages{&quot;sep&quot;: &quot;, &quot;}ssg{&quot;sep&quot;: &quot;, &quot;}content pipeline">
+  
+  
+  <link rel="icon" href="&#x2f;static&#x2f;media&#x2f;site&#x2f;root&#x2f;assets&#x2f;favicon.svg">
+  
+  
+  <meta property="og:title" content="Contact — Your Name">
+  <meta property="og:description" content="Get in touch with Your Name">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https:&#x2f;&#x2f;example.com&#x2f;contact&#x2f;">
+  
+  <link rel="canonical" href="none">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/main.css">
+  <style id="pfusch-style">
+:root {
+  --color-primary: #b45309;
+  --color-primary-dark: #92400e;
+  --color-accent: #0f766e;
+  --color-bg: #f6f3ec;
+  --color-surface: #fffdf8;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-border: #d6d0c4;
+  --color-code-bg: #1f2937;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-error: #b91c1c;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-heading: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.3rem;
+  --font-size-2xl: 1.8rem;
+  --font-size-3xl: 2.6rem;
+  --line-height: 1.65;
+  --spacing-unit: 0.25rem;
+  --container-max: 1080px;
+  --sidebar-width: 280px;
+  --header-height: 72px;
+  --dock-height: 80px;
+}
+</style>
+<script type="module">
+import { pfusch, html, css } from "https://cdn.jsdelivr.net/gh/MatthiasKainer/pfusch@main/pfusch.js";
+
+// === contact-form ===
+// ferrosite-contact-form
+// Progressive enhancement: plain <form> works without JS,
+// this component intercepts submission and uses the CQRS worker API.
+
+pfusch("ferrosite-contact-form", {
+  endpoint: "/api/contact",
+  status: "",          // "" | "sending" | "success" | "error"
+  errorMsg: "",
+}, (state, trigger, { children }) => [
+  css`
+    :host { display: block; }
+
+    .form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    label {
+      font-size: 0.875rem; font-weight: 500;
+      color: var(--color-text-muted);
+    }
+
+    input, textarea {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+    }
+    textarea { resize: vertical; min-height: 140px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+    .submit-btn {
+      align-self: flex-start;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--color-primary); color: #fff;
+      border: none; border-radius: 8px;
+      padding: 0.7rem 1.6rem; font-size: 1rem; font-weight: 600;
+      font-family: var(--font-sans); cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .submit-btn:not(:disabled):hover { background: var(--color-primary-dark); }
+
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 1rem 1.25rem; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 500;
+    }
+    .alert-success {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--color-success);
+    }
+    .alert-error {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--color-error);
+    }
+  `,
+
+  // Success state
+  state.status === "success"
+    ? html.div({ class: "alert alert-success" },
+        "Message sent! I'll get back to you within a day or two.")
+    : null,
+
+  // Error state
+  state.status === "error"
+    ? html.div({ class: "alert alert-error" },
+        `${state.errorMsg || "Something went wrong. Please try again or email directly."}`)
+    : null,
+
+  // Form (always rendered for progressive enhancement)
+  state.status !== "success"
+    ? html.form({
+        class: "form",
+        submit: async (e) => {
+          e.preventDefault();
+          if (state.status === "sending") return;
+
+          const form = e.target;
+          const data = Object.fromEntries(new FormData(form));
+          state.status  = "sending";
+          state.errorMsg = "";
+
+          try {
+            const res = await fetch(state.endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                command: "SendMessage",
+                payload: data,
+              }),
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.ok) throw new Error(json.error || "Request failed");
+            state.status = "success";
+          } catch (err) {
+            state.status   = "error";
+            state.errorMsg = err.message;
+          }
+        },
+      },
+
+      html.div({ class: "row" },
+        html.div({ class: "field" },
+          html.label({ for: "cf-name" }, "Your Name"),
+          html.input({ type: "text", id: "cf-name", name: "name",
+            required: true, autocomplete: "name", placeholder: "Jane Smith",
+            disabled: state.status === "sending" }),
+        ),
+        html.div({ class: "field" },
+          html.label({ for: "cf-email" }, "Email Address"),
+          html.input({ type: "email", id: "cf-email", name: "email",
+            required: true, autocomplete: "email", placeholder: "jane@example.com",
+            disabled: state.status === "sending" }),
+        ),
+      ),
+
+      html.div({ class: "field" },
+        html.label({ for: "cf-subject" }, "Subject (optional)"),
+        html.input({ type: "text", id: "cf-subject", name: "subject",
+          placeholder: "Project inquiry, collaboration, ...",
+          disabled: state.status === "sending" }),
+      ),
+
+      html.div({ class: "field" },
+        html.label({ for: "cf-message" }, "Message"),
+        html.textarea({ id: "cf-message", name: "message",
+          required: true, rows: 6, placeholder: "Tell me about your project...",
+          disabled: state.status === "sending" }),
+      ),
+
+      html.input({ type: "text", name: "_hp", style: "display:none",
+        autocomplete: "off", tabindex: "-1" }),
+
+      html.button({
+        type: "submit",
+        class: "submit-btn",
+        disabled: state.status === "sending",
+      },
+        state.status === "sending"
+          ? [html.div({ class: "spinner" }), "Sending..."]
+          : "Send Message"
+      ),
+    )
+    : null,
+]);
+
+
+</script>
+
+</head>
+<body class="page-contact">
+  <div class="site-shell">
+    <div class="site-frame">
+      <header class="site-header">
+        <div class="container header-inner">
+          <a href="/" class="brand" aria-label="github-page home">
+            <span class="brand-mark">
+              
+                F
+              
+            </span>
+            <span class="brand-copy">
+              <span class="brand-title">
+                
+                  ferrosite
+                
+              </span>
+              <span class="brand-subtitle">My personal site</span>
+            </span>
+          </a>
+
+          <nav class="site-nav" aria-label="Main navigation">
+            
+              
+              <a href="&#x2f;"
+                 class="nav-link "
+                 >
+                Home
+              </a>
+              
+              <a href="&#x2f;projects&#x2f;ferrosite&#x2f;"
+                 class="nav-link "
+                 >
+                Docs
+              </a>
+              
+            
+
+            
+              
+              <a href="https:&#x2f;&#x2f;github.com&#x2f;MatthiasKainer&#x2f;ferrosite"
+                 class="button-link primary"
+                 target="_blank" rel="noopener noreferrer">
+                View on GitHub
+              </a>
+            
+          </nav>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="container">
+          
+<header class="page-header">
+  <div class="section-kicker">Contact</div>
+  <h1 class="page-title">Open an issue or get in touch.</h1>
+  <p class="page-subtitle">For product pages on GitHub, the repository is usually the support channel.</p>
+</header>
+
+<section class="resource-grid">
+  
+  <article class="resource-card">
+    <h3>GitHub</h3>
+    <p class="muted">Use issues or discussions for bugs, docs, and feature requests.</p>
+    <a class="button-link secondary" href="https:&#x2f;&#x2f;github.com&#x2f;yourname" target="_blank" rel="noopener noreferrer">Open repository</a>
+  </article>
+  
+
+  
+  <article class="resource-card">
+    <h3>Email</h3>
+    <p class="muted">Use direct contact for sensitive topics that do not belong in a public issue.</p>
+    <a class="button-link secondary" href="mailto:hello@matthias-kainer.de">hello@matthias-kainer.de</a>
+  </article>
+  
+</section>
+
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="container footer-inner">
+          <div>
+            
+              <p>Ferrosite keeps content in files, pages in templates, and deployment boring enough to trust.</p>
+
+            
+          </div>
+          <div>
+            
+              <p>Built with <a href="https://github.com/MatthiasKainer/ferrosite">ferrosite</a>.</p>
+
+            
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

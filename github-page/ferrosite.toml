@@ -1,0 +1,55 @@
+[build]
+assets_dir = "assets"
+content_dir = "content"
+output_dir = "dist"
+template = "product"
+
+[build.ssr]
+enabled = false
+node_bin = "node"
+package_manager_bin = "npm"
+timeout_ms = 30000
+
+[deploy]
+provider = "cloudflare"
+
+[deploy.cloudflare]
+account_id = "YOUR_CF_ACCOUNT_ID"
+domain = "matthiaskainer.github.io"
+project_name = "github-page"
+workers_subdomain = "ferrosite"
+
+[layout]
+dock = false
+menu = true
+sidebar = false
+sidebar_position = "right"
+
+[plugins]
+enabled = []
+plugins_dir = "plugins"
+
+[site]
+base_url = "https://example.com"
+description = "My personal site"
+favicon = "/assets/favicon.svg"
+keywords = [
+    "rust",
+    "static site generator",
+    "github pages",
+    "ssg",
+    "content pipeline",
+]
+language = "en"
+title = "github-page"
+
+[site.author]
+avatar = ""
+bio = "Software developer and writer"
+email = "hello@matthias-kainer.de"
+name = "Your Name"
+
+[site.social]
+github = "https://github.com/yourname"
+linkedin = "https://linkedin.com/in/yourname"
+website = "https://matthiaskainer.github.io/ferrosite"

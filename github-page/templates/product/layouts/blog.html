@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-header">
+  <div class="section-kicker">Blog</div>
+  <h1 class="page-title">Release notes and build stories.</h1>
+  <p class="page-subtitle">This template keeps the blog optional. Add posts only when they help the product.</p>
+</header>
+
+{% if slots['article-card'] %}
+<section class="project-grid">
+  {% for post in slots['article-card'] %}
+  <a class="project-card" href="{{ post.url_path }}">
+    <div class="card-meta">{{ post.frontmatter.date | default(value='Post') }}</div>
+    <h3>{{ post.frontmatter.title }}</h3>
+    <p class="muted">{{ post.frontmatter.description | default(value=post.excerpt) }}</p>
+  </a>
+  {% endfor %}
+</section>
+{% else %}
+<div class="empty-state">No posts yet.</div>
+{% endif %}
+{% endblock %}

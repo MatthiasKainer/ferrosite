@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-header">
+  <div class="section-kicker">About</div>
+  <h1 class="page-title">Why this product exists.</h1>
+  <p class="page-subtitle">Use this page when the product story needs more context than the homepage should carry.</p>
+</header>
+
+{% if slots['about-body'] and slots['about-body'][0] %}
+<article class="article-shell">
+  <div class="article-body">{{ slots['about-body'][0].html_body | safe }}</div>
+</article>
+{% else %}
+<div class="empty-state">Add an `about-body` markdown file if you want a dedicated about page.</div>
+{% endif %}
+{% endblock %}

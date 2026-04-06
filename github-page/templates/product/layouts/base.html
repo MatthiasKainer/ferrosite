@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="{{ site.language | default(value='en') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.description }}">
+  {% if site.keywords %}
+  <meta name="keywords" content="{{ site.keywords | join(sep=', ') }}">
+  {% endif %}
+  {% if site.favicon %}
+  <link rel="icon" href="{{ site.favicon }}">
+  {% endif %}
+  {% if page.meta.no_index %}
+  <meta name="robots" content="noindex,nofollow">
+  {% endif %}
+  <meta property="og:title" content="{{ page.meta.og_title | default(value=page.title) }}">
+  <meta property="og:description" content="{{ page.meta.og_description | default(value=page.description) }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.base_url }}{{ page.url_path }}">
+  {% if page.meta.og_image %}
+  <meta property="og:image" content="{{ page.meta.og_image }}">
+  {% endif %}
+  <link rel="canonical" href="{{ page.meta.canonical | default(value=site.base_url ~ page.url_path) }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/main.css">
+  {{ extra_head | safe }}
+</head>
+<body class="page-{{ page.type }}">
+  <div class="site-shell">
+    <div class="site-frame">
+      <header class="site-header">
+        <div class="container header-inner">
+          <a href="/" class="brand" aria-label="{{ site.title }} home">
+            <span class="brand-mark">
+              {% if slots['header-brand'] and slots['header-brand'][0] and slots['header-brand'][0].frontmatter.icon %}
+                {{ slots['header-brand'][0].frontmatter.icon }}
+              {% else %}
+                F
+              {% endif %}
+            </span>
+            <span class="brand-copy">
+              <span class="brand-title">
+                {% if slots['header-brand'] and slots['header-brand'][0] %}
+                  {{ slots['header-brand'][0].frontmatter.title }}
+                {% else %}
+                  {{ site.title }}
+                {% endif %}
+              </span>
+              <span class="brand-subtitle">{{ site.description }}</span>
+            </span>
+          </a>
+
+          <nav class="site-nav" aria-label="Main navigation">
+            {% if slots['nav-item'] %}
+              {% for item in slots['nav-item'] %}
+              <a href="{{ item.frontmatter.url | default(value=item.url_path) }}"
+                 class="nav-link {% if page.url_path == item.frontmatter.url %}active{% endif %}"
+                 {% if item.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                {{ item.frontmatter.title }}
+              </a>
+              {% endfor %}
+            {% endif %}
+
+            {% if slots['header-action'] and slots['header-action'][0] %}
+              {% set action = slots['header-action'][0] %}
+              <a href="{{ action.frontmatter.url }}"
+                 class="button-link primary"
+                 {% if action.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                {{ action.frontmatter.title }}
+              </a>
+            {% elif site.social.github %}
+              <a href="{{ site.social.github }}" class="button-link primary" target="_blank" rel="noopener noreferrer">
+                GitHub
+              </a>
+            {% endif %}
+          </nav>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="container">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="container footer-inner">
+          <div>
+            {% if slots['footer-about'] and slots['footer-about'][0] %}
+              {{ slots['footer-about'][0].html_body | safe }}
+            {% else %}
+              <p>{{ site.description }}</p>
+            {% endif %}
+          </div>
+          <div>
+            {% if slots['footer-bottom'] and slots['footer-bottom'][0] %}
+              {{ slots['footer-bottom'][0].html_body | safe }}
+            {% else %}
+              <p>Built with ferrosite.</p>
+            {% endif %}
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

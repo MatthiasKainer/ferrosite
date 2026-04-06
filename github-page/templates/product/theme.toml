@@ -1,0 +1,31 @@
+[colors]
+primary       = "#b45309"
+primary_dark  = "#92400e"
+accent        = "#0f766e"
+background    = "#f6f3ec"
+surface       = "#fffdf8"
+text          = "#1f2937"
+text_muted    = "#6b7280"
+border        = "#d6d0c4"
+code_bg       = "#1f2937"
+success       = "#15803d"
+warning       = "#b45309"
+error         = "#b91c1c"
+
+[typography]
+font_sans    = "'IBM Plex Sans', system-ui, sans-serif"
+font_mono    = "'IBM Plex Mono', ui-monospace, monospace"
+font_heading = "'Space Grotesk', 'IBM Plex Sans', sans-serif"
+size_base    = "1rem"
+size_lg      = "1.125rem"
+size_xl      = "1.3rem"
+size_2xl     = "1.8rem"
+size_3xl     = "2.6rem"
+line_height  = "1.65"
+
+[spacing]
+unit           = "0.25rem"
+container_max  = "1080px"
+sidebar_width  = "280px"
+header_height  = "72px"
+dock_height    = "80px"
