@@ -111,7 +111,8 @@
     <a href="/projects/" class="section-link">All projects →</a>
   </div>
   <div class="projects-grid">
-    {% for project in slots['project-card'] | slice(end=3) %}
+    {% for project in slots['project-card'] %}
+    {% if loop.index <= 3 %}
     <dev-project-card
       title="{{ project.frontmatter.title }}"
       excerpt="{{ project.excerpt }}"
@@ -121,6 +122,7 @@
       {% if project.frontmatter.status %}status="{{ project.frontmatter.status }}"{% endif %}
       stack='{{ project.frontmatter.tech_stack | tojson }}'
     ></dev-project-card>
+    {% endif %}
     {% endfor %}
   </div>
 </section>
@@ -134,7 +136,8 @@
     <a href="/blog/" class="section-link">All posts →</a>
   </div>
   <div class="blog-grid">
-    {% for post in slots['article-card'] | slice(end=3) %}
+    {% for post in slots['article-card'] %}
+    {% if loop.index <= 3 %}
     <dev-blog-card
       title="{{ post.frontmatter.title }}"
       excerpt="{{ post.excerpt }}"
@@ -144,6 +147,7 @@
       tags='{{ post.frontmatter.tags | tojson }}'
       {% if post.frontmatter.cover_image %}cover="{{ post.frontmatter.cover_image }}"{% endif %}
     ></dev-blog-card>
+    {% endif %}
     {% endfor %}
   </div>
 </section>

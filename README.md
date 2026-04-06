@@ -14,6 +14,14 @@
 
 ---
 
+## Is this the right CMS for you?
+
+Probably not. I use this for my own [matthias-kainer.de](https://matthias-kainer.de) website, I wrote about the why [here](https://matthias-kainer.de/blog/posts/relaunching-the-website-and-accidentally-writing-a-cms/).
+
+So unless you are me, have my requirements, or always secretly wanted to be me, this is probably not the right CMS for your problems. Go write your own - pretty sure there is space for one more CMS in this world!
+
+---
+
 ## Quick Start
 
 ```bash
@@ -24,6 +32,8 @@ cargo install ferrosite
 ferrosite new my-site --template developer
 # OR Create a new site from the company template
 ferrosite new my-site --template company
+# OR Create a new site from the product template
+ferrosite new my-site --template product
 # OR Create a new site from a GitHub template repository
 ferrosite new my-site --template https://github.com/user/ferrosite-template.git
 
@@ -75,7 +85,7 @@ my-site/
 
 Local markdown images are collected during the build, rewritten to `/static/media/...`, and emitted as optimized files in `dist/static/media/`.
 
-Bundled templates currently include `developer` and `company`.
+Bundled templates currently include `developer`, `company`, and `product`.
 Bundled plugins currently live in Ferrosite itself under `ferrosite/plugins/` and are loaded automatically when enabled in `ferrosite.toml`.
 
 - To build your own template, see [`templates/HOWTO-CREATE-A-TEMPLATE.md`](templates/HOWTO-CREATE-A-TEMPLATE.md).

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "A railway-oriented static site generator for personal homepages"
 license = "MIT"
+repository = "https://github.com/MatthiasKainer/ferrosite"
+homepage = "https://matthiaskainer.github.io/ferrosite/"
+readme = "README.md"
 
 [[bin]]
 name = "ferrosite"

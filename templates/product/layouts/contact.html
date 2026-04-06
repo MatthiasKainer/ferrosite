@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-header">
+  <div class="section-kicker">Contact</div>
+  <h1 class="page-title">Open an issue or get in touch.</h1>
+  <p class="page-subtitle">For product pages on GitHub, the repository is usually the support channel.</p>
+</header>
+
+<section class="resource-grid">
+  {% if site.social.github %}
+  <article class="resource-card">
+    <h3>GitHub</h3>
+    <p class="muted">Use issues or discussions for bugs, docs, and feature requests.</p>
+    <a class="button-link secondary" href="{{ site.social.github }}" target="_blank" rel="noopener noreferrer">Open repository</a>
+  </article>
+  {% endif %}
+
+  {% if site.author.email %}
+  <article class="resource-card">
+    <h3>Email</h3>
+    <p class="muted">Use direct contact for sensitive topics that do not belong in a public issue.</p>
+    <a class="button-link secondary" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

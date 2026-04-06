@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-header">
+  <div class="section-kicker">Projects</div>
+  <h1 class="page-title">Product pages and docs.</h1>
+  <p class="page-subtitle">Keep the listing simple. Each project becomes its own permanent documentation page.</p>
+</header>
+
+{% if slots['project-card'] %}
+<section class="project-grid">
+  {% for project in slots['project-card'] %}
+  <a class="project-card" href="{{ project.url_path }}">
+    <div class="card-meta">{{ project.frontmatter.status | default(value='Project') }}</div>
+    <h3>{{ project.frontmatter.title }}</h3>
+    <p class="muted">{{ project.frontmatter.description | default(value=project.excerpt) }}</p>
+    {% if project.frontmatter.tech_stack %}
+    <div class="stack-list">
+      {% for tech in project.frontmatter.tech_stack %}
+      <span class="stack-tag">{{ tech }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</section>
+{% else %}
+<div class="empty-state">No product docs have been added yet.</div>
+{% endif %}
+{% endblock %}

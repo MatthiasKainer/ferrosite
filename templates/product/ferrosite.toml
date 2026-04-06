@@ -1,0 +1,48 @@
+[site]
+title = "ferrosite"
+description = "A lightweight Rust static site generator for slot-based content, static-first pages, and simple deployment."
+base_url = "https://matthiaskainer.github.io/ferrosite"
+language = "en"
+keywords = ["rust", "static site generator", "github pages", "ssg", "content pipeline"]
+favicon = "/assets/favicon.svg"
+
+[site.author]
+name = "Matthias Kainer"
+email = "hello@matthias-kainer.de"
+bio = "Building tools that keep publishing pipelines understandable."
+avatar = ""
+
+[site.social]
+github = "https://github.com/MatthiasKainer/ferrosite"
+website = "https://matthiaskainer.github.io/ferrosite"
+
+[build]
+template = "product"
+content_dir = "content"
+output_dir = "dist"
+assets_dir = "assets"
+
+[build.ssr]
+enabled = false
+node_bin = "node"
+package_manager_bin = "npm"
+timeout_ms = 30000
+
+[layout]
+menu = true
+dock = false
+sidebar = false
+sidebar_position = "right"
+
+[plugins]
+plugins_dir = "plugins"
+enabled = []
+
+[deploy]
+provider = "cloudflare"
+
+[deploy.cloudflare]
+project_name = "ferrosite"
+account_id = "YOUR_CF_ACCOUNT_ID"
+workers_subdomain = "ferrosite"
+domain = "matthiaskainer.github.io"

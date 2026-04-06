@@ -1405,13 +1405,8 @@ fn scaffold_new_site(
     resolved_template: &ResolvedNewTemplate,
     answers: &NewSiteAnswers,
 ) -> SiteResult<()> {
-    copy_dir_recursive(&resolved_template.source_dir, target)?;
-
-    if answers.template == resolved_template.template_name
-        && resolved_template.display_name != resolved_template.template_name
-    {
-        materialize_local_template(target, &resolved_template.source_dir, &answers.template)?;
-    }
+    copy_template_site_files(&resolved_template.source_dir, target)?;
+    materialize_local_template(target, &resolved_template.source_dir, &answers.template)?;
 
     ensure_scaffold_gitignore(target)?;
 
@@ -1429,6 +1424,28 @@ fn materialize_local_template(
     let local_config = template_root.join("ferrosite.toml");
     if local_config.exists() {
         std::fs::remove_file(local_config)?;
+    }
+
+    Ok(())
+}
+
+fn copy_template_site_files(template_source: &Path, target: &Path) -> SiteResult<()> {
+    use ferrosite::error::SiteError;
+
+    std::fs::create_dir_all(target).map_err(SiteError::from)?;
+
+    for entry_name in ["content", "assets", "plugins", "ferrosite.toml"] {
+        let src = template_source.join(entry_name);
+        if !src.exists() {
+            continue;
+        }
+
+        let dst = target.join(entry_name);
+        if src.is_dir() {
+            copy_dir_recursive(&src, &dst)?;
+        } else {
+            std::fs::copy(&src, &dst).map_err(SiteError::from)?;
+        }
     }
 
     Ok(())
@@ -2605,11 +2622,37 @@ account_id = "abc123"
         assert!(target
             .join("templates/portfolio-template/components/card.js")
             .exists());
+        assert!(!target.join("layouts/base.html").exists());
+        assert!(!target.join("components/card.js").exists());
+        assert!(!target.join("theme.toml").exists());
         assert!(target.join("content/about.md").exists());
         assert!(target.join("assets/site.css").exists());
         assert!(std::fs::read_to_string(target.join(".gitignore"))
             .expect("gitignore")
             .contains(".ferrosite-cache/"));
+    }
+
+    #[test]
+    fn scaffold_new_site_from_bundled_template_materializes_active_override_paths() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let target = temp.path().join("site");
+        let resolved = resolve_new_site_template("product").expect("template");
+        let answers = NewSiteAnswers::defaults("site", "product");
+
+        scaffold_new_site(&target, &resolved, &answers).expect("scaffold");
+        write_scaffold_config(&target, &answers).expect("config");
+
+        assert!(target.join("content/home.md").exists());
+        assert!(target.join("assets/main.css").exists());
+        assert!(target.join("ferrosite.toml").exists());
+
+        assert!(target
+            .join("templates/product/layouts/home.html")
+            .exists());
+        assert!(target.join("templates/product/theme.toml").exists());
+
+        assert!(!target.join("layouts/home.html").exists());
+        assert!(!target.join("theme.toml").exists());
     }
 
     #[test]

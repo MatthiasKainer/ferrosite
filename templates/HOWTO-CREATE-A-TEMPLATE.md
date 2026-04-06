@@ -60,6 +60,14 @@ ferrosite new my-site --template company
 ferrosite copies the entire template directory into the new site root, then
 rewrites `ferrosite.toml` with the answers collected from the CLI.
 
+More precisely:
+
+- `content/`, `assets/`, `plugins/`, and `ferrosite.toml` are copied into the
+  new site root
+- `layouts/`, `components/`, and `theme.toml` are materialized into
+  `templates/<template-name>/` so they act as live site-local template
+  overrides
+
 What gets overwritten intentionally:
 
 - `site.title`

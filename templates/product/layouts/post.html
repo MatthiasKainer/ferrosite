@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if article %}
+<div class="detail-layout">
+  <article class="article-shell">
+    <div class="card-meta">{{ article.frontmatter.status | default(value=page.type | upper) }}</div>
+    <h1 class="article-title">{{ article.frontmatter.title }}</h1>
+    {% if article.frontmatter.description %}
+    <p class="article-lead">{{ article.frontmatter.description }}</p>
+    {% endif %}
+    <div class="article-body">{{ article.html_body | safe }}</div>
+  </article>
+
+  <aside class="detail-card">
+    <div class="detail-list">
+      {% if article.frontmatter.repo_url %}
+      <div>
+        <strong>Repository</strong>
+        <a href="{{ article.frontmatter.repo_url }}" target="_blank" rel="noopener noreferrer">{{ article.frontmatter.repo_url }}</a>
+      </div>
+      {% endif %}
+      {% if article.frontmatter.live_url %}
+      <div>
+        <strong>Website</strong>
+        <a href="{{ article.frontmatter.live_url }}" target="_blank" rel="noopener noreferrer">{{ article.frontmatter.live_url }}</a>
+      </div>
+      {% endif %}
+      {% if article.frontmatter.status %}
+      <div>
+        <strong>Status</strong>
+        <span>{{ article.frontmatter.status }}</span>
+      </div>
+      {% endif %}
+      {% if article.frontmatter.tech_stack %}
+      <div>
+        <strong>Stack</strong>
+        <div class="stack-list">
+          {% for tech in article.frontmatter.tech_stack %}
+          <span class="stack-tag">{{ tech }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+{% else %}
+<div class="empty-state">Nothing to show yet.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if slots['hero'] %}
+  {% set hero = slots['hero'][0] %}
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">Rust static publishing</div>
+      <h1 class="hero-title">{{ hero.frontmatter.headline | default(value=hero.frontmatter.title) }}</h1>
+      {% if hero.frontmatter.sub_headline %}
+      <p class="hero-subhead">{{ hero.frontmatter.sub_headline }}</p>
+      {% endif %}
+      <div class="prose">{{ hero.html_body | safe }}</div>
+      <div class="hero-actions">
+        {% if hero.frontmatter.cta_label and hero.frontmatter.cta_url %}
+        <a href="{{ hero.frontmatter.cta_url }}" class="button-link primary">{{ hero.frontmatter.cta_label }}</a>
+        {% endif %}
+        {% if site.social.github %}
+        <a href="{{ site.social.github }}" class="button-link secondary" target="_blank" rel="noopener noreferrer">Source</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <aside class="hero-side">
+      <div class="section-kicker">What you get</div>
+      {% if slots['feature-card'] %}
+      <div class="resource-grid">
+        {% for item in slots['feature-card'] %}
+        {% if loop.index <= 3 %}
+        <article class="resource-card">
+          <h3>{{ item.frontmatter.title }}</h3>
+          <div class="muted">{{ item.excerpt }}</div>
+        </article>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </aside>
+  </section>
+{% endif %}
+
+{% if slots['stat-number'] %}
+<section class="section">
+  <div class="metric-grid">
+    {% for stat in slots['stat-number'] %}
+    <article class="metric-card">
+      <span class="metric-value">{{ stat.frontmatter.value }}{{ stat.frontmatter.suffix | default(value='') }}</span>
+      <span class="metric-label">{{ stat.frontmatter.label | default(value=stat.frontmatter.title) }}</span>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if slots['code-snippet'] %}
+  {% set snippet = slots['code-snippet'][0] %}
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Quick start</div>
+        <h2 class="section-title">{{ snippet.frontmatter.title }}</h2>
+      </div>
+      <p class="section-copy">{{ snippet.frontmatter.description | default(value='The minimal path from install to running site.') }}</p>
+    </div>
+    <div class="code-card">
+      <pre><code>{{ snippet.markdown_body }}</code></pre>
+    </div>
+  </section>
+{% endif %}
+
+{% if slots['feature-card'] %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Why ferrosite</div>
+      <h2 class="section-title">Small enough to understand, capable enough to ship.</h2>
+    </div>
+  </div>
+  <div class="feature-grid">
+    {% for item in slots['feature-card'] %}
+    <article class="feature-card">
+      {% if item.frontmatter.icon %}
+      <div class="feature-icon">{{ item.frontmatter.icon }}</div>
+      {% endif %}
+      <h3>{{ item.frontmatter.title }}</h3>
+      <div class="muted">{{ item.html_body | safe }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if slots['link-button'] %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Resources</div>
+      <h2 class="section-title">Read the docs, inspect the code, ship the site.</h2>
+    </div>
+  </div>
+  <div class="resource-links">
+    {% for item in slots['link-button'] %}
+    <a href="{{ item.frontmatter.url | default(value=item.url_path) }}"
+       class="button-link secondary"
+       {% if item.frontmatter.external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+      {{ item.frontmatter.title }}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if slots['project-card'] %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Documentation</div>
+      <h2 class="section-title">One focused page for the product itself.</h2>
+    </div>
+  </div>
+  <div class="project-grid">
+    {% for project in slots['project-card'] %}
+    {% if loop.first %}
+    <a class="project-card" href="{{ project.url_path }}">
+      <div class="card-meta">{{ project.frontmatter.status | default(value='Project') }}</div>
+      <h3>{{ project.frontmatter.title }}</h3>
+      <p class="muted">{{ project.frontmatter.description | default(value=project.excerpt) }}</p>
+      {% if project.frontmatter.tech_stack %}
+      <div class="stack-list">
+        {% for tech in project.frontmatter.tech_stack %}
+        <span class="stack-tag">{{ tech }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
