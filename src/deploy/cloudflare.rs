@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::config::CloudflareDeployConfig;
 use crate::error::{SiteError, SiteResult};
-use crate::plugin::{Plugin, PluginRegistry};
+use crate::plugin::{KvNamespace, Plugin, PluginRegistry};
 
 use super::{count_html_files, require_tool, serialized_cqrs, CommandExt, DeployResult, Deployer};
 
@@ -29,9 +29,8 @@ impl Deployer for CloudflareDeployer {
 
         require_tool("wrangler", "npm install -g wrangler")?;
 
-        let wrangler_toml = generate_wrangler_toml(&self.config);
         let wrangler_path = dist_dir.parent().unwrap_or(dist_dir).join("wrangler.toml");
-        std::fs::write(&wrangler_path, &wrangler_toml)?;
+        ensure_wrangler_toml(&wrangler_path, &self.config)?;
 
         let mut command = std::process::Command::new("wrangler");
         command.args([
@@ -102,6 +101,7 @@ impl Deployer for CloudflareDeployer {
                         .unwrap_or("worker.js"),
                     self.config.domain.as_deref(),
                     &plugin.manifest.worker_route,
+                    &plugin.manifest.kv_namespaces,
                 ),
             )?;
 
@@ -133,6 +133,15 @@ impl Deployer for CloudflareDeployer {
         }
         Ok(())
     }
+}
+
+fn ensure_wrangler_toml(path: &Path, config: &CloudflareDeployConfig) -> SiteResult<()> {
+    if path.try_exists()? {
+        return Ok(());
+    }
+
+    std::fs::write(path, generate_wrangler_toml(config))?;
+    Ok(())
 }
 
 pub(crate) fn generate_cloudflare_worker(plugin: &Plugin) -> String {
@@ -315,6 +324,7 @@ fn generate_worker_wrangler_toml(
     worker_entrypoint: &str,
     domain: Option<&str>,
     worker_route: &str,
+    kv_namespaces: &[KvNamespace],
 ) -> String {
     let mut config = format!(
         r#"name = "{worker_name}"
@@ -329,6 +339,15 @@ workers_dev = true
         config.push_str("\n[route]\n");
         config.push_str(&format!("pattern = \"{route_pattern}\"\n"));
         config.push_str(&format!("zone_name = \"{zone_name}\"\n"));
+    }
+
+    for kv in kv_namespaces {
+        config.push_str("\n[[kv_namespaces]]\n");
+        config.push_str(&format!("binding = \"{}\"\n", kv.binding));
+        config.push_str(&format!("id = \"{}\"\n", kv.id));
+        if let Some(preview_id) = &kv.preview_id {
+            config.push_str(&format!("preview_id = \"{preview_id}\"\n"));
+        }
     }
 
     config
@@ -365,6 +384,7 @@ mod tests {
     use super::*;
     use crate::plugin::{PluginManifest, SandboxConfig};
     use std::path::PathBuf;
+    use tempfile::tempdir;
 
     fn fixture_plugin() -> Plugin {
         Plugin {
@@ -382,6 +402,7 @@ mod tests {
                 worker_route: "/api/contact".into(),
                 worker_runtime: "cloudflare-worker".into(),
                 required_env: Vec::new(),
+                kv_namespaces: Vec::new(),
                 sandbox: SandboxConfig::default(),
             },
             component_source: String::new(),
@@ -422,6 +443,7 @@ mod tests {
             "contact-form.worker.js",
             None,
             "/api/contact",
+            &[],
         );
 
         assert!(output.contains("name = \"contact-form-worker\""));
@@ -429,6 +451,7 @@ mod tests {
         assert!(output.contains("keep_vars = true"));
         assert!(output.contains("workers_dev = true"));
         assert!(!output.contains("pages_build_output_dir"));
+        assert!(!output.contains("kv_namespaces"));
     }
 
     #[test]
@@ -438,10 +461,55 @@ mod tests {
             "contact-form.worker.js",
             Some("https://matthias-kainer.de/"),
             "/api/contact",
+            &[],
         );
 
         assert!(output.contains("[route]"));
         assert!(output.contains("pattern = \"matthias-kainer.de/api/contact*\""));
         assert!(output.contains("zone_name = \"matthias-kainer.de\""));
+    }
+
+    #[test]
+    fn worker_wrangler_config_includes_kv_namespaces() {
+        use crate::plugin::KvNamespace;
+        let kv = vec![KvNamespace {
+            binding: "COMMENTS_KV".into(),
+            id: "abc123".into(),
+            preview_id: Some("preview456".into()),
+        }];
+        let output = generate_worker_wrangler_toml(
+            "draft-comments-worker",
+            "draft-comments.worker.js",
+            None,
+            "/api/draft-comments",
+            &kv,
+        );
+
+        assert!(output.contains("[[kv_namespaces]]"));
+        assert!(output.contains("binding = \"COMMENTS_KV\""));
+        assert!(output.contains("id = \"abc123\""));
+        assert!(output.contains("preview_id = \"preview456\""));
+    }
+
+    #[test]
+    fn existing_pages_wrangler_config_is_not_overwritten() {
+        let temp = tempdir().expect("tempdir");
+        let wrangler_path = temp.path().join("wrangler.toml");
+        let original = "name = \"custom\"\ncompatibility_date = \"2025-01-01\"\n";
+        std::fs::write(&wrangler_path, original).expect("write existing wrangler config");
+
+        ensure_wrangler_toml(
+            &wrangler_path,
+            &CloudflareDeployConfig {
+                project_name: "matthias-kainer".into(),
+                account_id: "abc123".into(),
+                workers_subdomain: None,
+                domain: None,
+            },
+        )
+        .expect("preserve existing wrangler config");
+
+        let preserved = std::fs::read_to_string(&wrangler_path).expect("read wrangler config");
+        assert_eq!(preserved, original);
     }
 }

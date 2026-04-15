@@ -25,7 +25,21 @@ pub struct PluginManifest {
     #[serde(default)]
     pub required_env: Vec<String>,
     #[serde(default)]
+    pub kv_namespaces: Vec<KvNamespace>,
+    #[serde(default)]
     pub sandbox: SandboxConfig,
+}
+
+/// A Cloudflare KV namespace binding declared by a plugin.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KvNamespace {
+    /// The binding name used in worker code (e.g. `env.COMMENTS_KV`).
+    pub binding: String,
+    /// The KV namespace ID for production.
+    pub id: String,
+    /// Optional preview namespace ID (used by `wrangler dev`).
+    #[serde(default)]
+    pub preview_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,6 +52,8 @@ struct PluginManifestDocument {
     commands: Vec<CommandDef>,
     #[serde(default)]
     queries: Vec<QueryDef>,
+    #[serde(default)]
+    kv_namespaces: Vec<KvNamespace>,
     #[serde(default)]
     sandbox: SandboxConfig,
 }
@@ -63,6 +79,8 @@ struct PluginManifestCore {
     pub worker_runtime: String,
     #[serde(default)]
     pub required_env: Vec<String>,
+    #[serde(default)]
+    pub kv_namespaces: Vec<KvNamespace>,
     #[serde(default)]
     pub sandbox: SandboxConfig,
 }
@@ -145,6 +163,11 @@ pub(super) fn parse_manifest(raw: &str) -> Result<PluginManifest, toml::de::Erro
                     worker_route: plugin.worker_route,
                     worker_runtime: plugin.worker_runtime,
                     required_env: plugin.required_env,
+                    kv_namespaces: if doc.kv_namespaces.is_empty() {
+                        plugin.kv_namespaces
+                    } else {
+                        doc.kv_namespaces
+                    },
                     sandbox: if doc.sandbox == SandboxConfig::default() {
                         plugin.sandbox
                     } else {

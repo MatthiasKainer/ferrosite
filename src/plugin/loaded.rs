@@ -129,6 +129,7 @@ mod tests {
                 worker_route: "/api/contact".into(),
                 worker_runtime: "cloudflare-worker".into(),
                 required_env: Vec::new(),
+                kv_namespaces: Vec::new(),
                 sandbox: SandboxConfig::default(),
             },
             component_source: "customElements.define('contact-form', class {});".into(),
